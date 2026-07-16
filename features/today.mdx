@@ -19,7 +19,7 @@ Alongside the main panel, a **Backlog sidebar** lists tasks that are overdue or 
 | `src/features/today/components/TaskSection.tsx` | Groups tasks into labeled sections (e.g. "Morning", "Unscheduled") |
 | `src/features/today/components/TaskDetailSheet.tsx` | Bottom sheet / dialog for viewing & editing one task's full detail (notes, subtasks, project, priority) |
 | `src/features/today/components/BacklogSidebar.tsx` | Sidebar listing overdue/undated tasks, draggable onto the day |
-| `src/features/today/components/ContextMenu.tsx` | Right-click / long-press menu for task actions |
+| `src/components/ui/ContextMenu.tsx` | Shared right-click / long-press menu, driven by a config of menu items (built per-surface in `src/components/ui/contextMenuItems.tsx`); multi-select via right-click-drag comes from `src/features/shared/useRightClickMenu.ts` |
 | `src/features/today/components/PlanningRitual.tsx` | Guided "plan your day" flow |
 | `src/features/today/components/QuickAddInput.tsx` | Inline quick-add field embedded in the planner |
 | `src/features/today/components/TimeBlock.tsx` / `UnscheduledBlock.tsx` | Rendering helpers used by the planner for scheduled vs. unscheduled tasks |
@@ -45,4 +45,4 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
 - Changing what a task card shows -> `TaskCard.tsx`.
 - Changing planner layout/sections -> `PlannerView.tsx` + `TaskSection.tsx`.
 - Changing markdown syntax/behavior -> `MarkdownEditor.tsx`, `taskMarkdown.ts`, `markdownSave.ts`.
-- Adding a new task action (e.g. a context-menu item) -> `ContextMenu.tsx`.
+- Adding a new task action (e.g. a context-menu item) -> `src/components/ui/contextMenuItems.tsx`.
