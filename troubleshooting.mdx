@@ -1,0 +1,59 @@
+---
+title: "Troubleshooting Kyrou Installation and Updates"
+sidebarTitle: "Troubleshooting"
+description: "Fix common Kyrou issues including failed updates, installation errors, connectivity problems, and update loops. Step-by-step solutions for each problem."
+---
+
+This guide helps you diagnose and resolve the most common issues users encounter with Kyrou, including installation failures, update errors, and connectivity problems.
+
+<AccordionGroup>
+
+  <Accordion title="Kyrou isn't detecting updates">
+    - Check your internet connection and confirm you can reach other websites.
+    - Ensure Kyrou is running — look for its icon in the system tray.
+    - Manually trigger an update check: **Settings > Check for Updates**.
+    - Verify that your firewall isn't blocking Kyrou from reaching the releases channel.
+    - If the problem persists, try restarting Kyrou.
+  </Accordion>
+
+  <Accordion title="Update download fails or gets stuck">
+    - Check that your internet connection is stable.
+    - Ensure you have enough free disk space — at least 200 MB is recommended.
+    - Try pausing and resuming the download from Settings.
+    - Restart Kyrou and allow it to retry the download automatically.
+    - As a last resort, download the latest installer manually from the [releases page](https://github.com/SeiynJie/kyrou-releases/releases).
+  </Accordion>
+
+  <Accordion title="Installation failed after downloading">
+    - Ensure you have the necessary permissions (admin on Windows, sudo on Linux/macOS).
+    - If your antivirus software is interfering, temporarily disable it, complete the installation, then re-enable it.
+    - Download and run the full installer manually from the [releases page](https://github.com/SeiynJie/kyrou-releases/releases).
+    - Check that you have enough available disk space before retrying.
+  </Accordion>
+
+  <Accordion title="Kyrou won't launch or crashes on startup">
+    - Try uninstalling and reinstalling the latest version from the releases page.
+    - Confirm your system meets the minimum requirements: Windows 10+, macOS 11+, or Linux with glibc 2.17+.
+    - Look for error logs in the application data directory and review them for clues.
+    - Report the issue — along with any relevant logs — on the [GitHub releases page](https://github.com/SeiynJie/kyrou-releases/releases).
+  </Accordion>
+
+  <Accordion title="Auto-update is disabled and I can't re-enable it">
+    - Open **Settings** and check the **Auto-Update** toggle.
+    - If the settings are greyed out, your system administrator may have applied a policy — contact them to restore access.
+    - Try resetting your settings to defaults: **Settings > Advanced > Reset to Defaults**.
+  </Accordion>
+
+  <Accordion title="I'm on an old version even after updating">
+    - Confirm that the update completed successfully by checking your version number in **Settings > About**.
+    - Some updates require a full application restart — quit Kyrou completely and reopen it.
+    - If the update loop persists, manually download the latest version from the [releases page](https://github.com/SeiynJie/kyrou-releases/releases).
+  </Accordion>
+
+</AccordionGroup>
+
+## Getting More Help
+
+<Note>
+  If none of these steps resolve your issue, you can open a support request or file an issue on the [GitHub releases page](https://github.com/SeiynJie/kyrou-releases/releases).
+</Note>

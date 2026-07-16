@@ -1,0 +1,59 @@
+---
+title: "Kyrou Frequently Asked Questions"
+sidebarTitle: "FAQ"
+description: "Answers to the most common questions about Kyrou — how updates work, data usage, privacy, supported platforms, and managing your installation."
+---
+
+Here are answers to the questions users ask most often about Kyrou, covering how updates work, platform support, privacy, and managing your installation.
+
+<AccordionGroup>
+
+  <Accordion title="What is Kyrou?">
+    Kyrou is an application that automates software updates. It monitors the official releases channel and installs new versions in the background so you always run the latest release without manual action.
+  </Accordion>
+
+  <Accordion title="Is Kyrou free to use?">
+    Kyrou is freely available. You can download it from the public releases page at [github.com/SeiynJie/kyrou-releases/releases](https://github.com/SeiynJie/kyrou-releases/releases).
+  </Accordion>
+
+  <Accordion title="Which operating systems does Kyrou support?">
+    Kyrou supports Windows 10 and later, macOS 11 (Big Sur) and later, and modern Linux distributions with glibc 2.17 or higher.
+  </Accordion>
+
+  <Accordion title="How does Kyrou know when an update is available?">
+    Kyrou periodically checks the public releases channel at [github.com/SeiynJie/kyrou-releases/releases](https://github.com/SeiynJie/kyrou-releases/releases). When a version newer than your installed version is published there, Kyrou downloads and installs it automatically.
+  </Accordion>
+
+  <Accordion title="Will updates interrupt my work?">
+    Kyrou is designed to be unobtrusive. Downloads happen in the background. Some updates may require a brief restart, and Kyrou will prompt you before doing so — letting you defer until a convenient time.
+  </Accordion>
+
+  <Accordion title="How much bandwidth do updates use?">
+    Update packages are kept as small as possible — only the changed files are included. Actual sizes vary by release, but most updates are lightweight. Full installer downloads are also available if you prefer a manual installation.
+  </Accordion>
+
+  <Accordion title="Can I disable automatic updates?">
+    Yes. Open Kyrou's settings and toggle off **Auto-Update**. Kyrou will still notify you when updates are available, but it won't install them without your approval. See the Settings page for details.
+  </Accordion>
+
+  <Accordion title="How do I roll back to an older version?">
+    You can download any previous release from the [releases page](https://github.com/SeiynJie/kyrou-releases/releases). Note that running older versions means missing out on security patches and bug fixes, so we recommend staying current.
+  </Accordion>
+
+  <Accordion title="Is Kyrou safe? Where do updates come from?">
+    All updates are sourced exclusively from the official public releases page at [github.com/SeiynJie/kyrou-releases/releases](https://github.com/SeiynJie/kyrou-releases/releases). Only verified, signed builds are published there.
+  </Accordion>
+
+  <Accordion title="What's the current version of Kyrou?">
+    The latest release is **v0.1.5**. You can always find the most up-to-date version on the [releases page](https://github.com/SeiynJie/kyrou-releases/releases).
+  </Accordion>
+
+  <Accordion title="How do I completely remove Kyrou?">
+    Use your system's standard uninstall process — **Programs & Features** on Windows, drag to Trash on macOS, or your package manager on Linux. See the Installation page for detailed steps.
+  </Accordion>
+
+</AccordionGroup>
+
+<Card title="Still have questions?" icon="envelope" href="https://github.com/SeiynJie/kyrou-releases/releases">
+  Open an issue on the releases page for additional support.
+</Card>

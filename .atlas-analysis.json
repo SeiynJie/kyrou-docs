@@ -1,0 +1,47 @@
+{
+  "projectType": "saas",
+  "projectName": "Kyrou",
+  "projectDescription": "Kyrou is a software application that delivers automatic updates to users through a public releases channel.",
+  "theme": "luma",
+  "primaryColor": "#18E299",
+  "lightColor": "#18E299",
+  "darkColor": "#0C8C5E",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "installation"
+        ]
+      },
+      {
+        "group": "Using Kyrou",
+        "pages": [
+          "auto-updates",
+          "releases",
+          "settings"
+        ]
+      },
+      {
+        "group": "Support",
+        "pages": [
+          "troubleshooting",
+          "faq"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automatic software updates delivered seamlessly in the background",
+    "Public releases channel with versioned builds",
+    "Simple installation and onboarding experience",
+    "Release notes and changelog for every version"
+  ],
+  "publicApiSurface": [
+    "Auto-update check endpoint",
+    "Release download endpoint",
+    "Version manifest (latest release metadata)"
+  ]
+}

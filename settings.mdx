@@ -1,0 +1,66 @@
+---
+title: "Configuring Kyrou Settings and Preferences"
+sidebarTitle: "Settings"
+description: "Customize how Kyrou behaves — control update notifications, check frequency, startup behavior, and other preferences from the settings panel."
+---
+
+Kyrou's settings let you control how updates are delivered, when checks happen, and how the app behaves at startup. This page walks through every available option so you can configure Kyrou to fit your workflow.
+
+## Accessing Settings
+
+You can open the settings panel in two ways:
+
+- **System tray icon** — Right-click the Kyrou icon in your system tray and select **Settings**.
+- **Main application window** — Open Kyrou and navigate to the menu, then click **Settings**.
+
+## Update Settings
+
+<AccordionGroup>
+  <Accordion title="Auto-Update">
+    Enable or disable automatic updates entirely. When **enabled**, Kyrou downloads and installs updates without asking for your approval — you'll receive a notification once the update is complete. When **disabled**, Kyrou still detects new versions and notifies you, but it won't install anything until you give the go-ahead.
+  </Accordion>
+  <Accordion title="Check Frequency">
+    Controls how often Kyrou looks for a new release. You can choose from:
+
+    - **On startup** — Kyrou checks once each time the app launches.
+    - **Every hour** — Kyrou checks in the background once per hour while running.
+    - **Every day** — Kyrou checks once every 24 hours while running.
+
+    For most users, **On startup** or **Every hour** strikes a good balance between staying current and minimizing background activity.
+  </Accordion>
+  <Accordion title="Notify Before Installing">
+    When this setting is **enabled**, Kyrou shows a notification before it applies a downloaded update, giving you the opportunity to defer the install to a more convenient time. When **disabled**, updates are applied as soon as the download finishes.
+  </Accordion>
+  <Accordion title="Update Channel">
+    The release channel Kyrou subscribes to when checking for updates. This defaults to the stable public channel (`kyrou-releases`), which is the recommended setting for all users. All official Kyrou releases are published to this channel.
+  </Accordion>
+</AccordionGroup>
+
+## Startup Behavior
+
+<AccordionGroup>
+  <Accordion title="Launch at Login">
+    When enabled, Kyrou starts automatically every time you log in to your computer. This ensures the app is always running in the background, ready to check for and apply updates without you needing to open it manually.
+  </Accordion>
+  <Accordion title="Start Minimized">
+    When enabled, Kyrou launches directly to the system tray without opening a visible window. This is the recommended setting for most users — Kyrou stays out of your way while still running in the background.
+  </Accordion>
+</AccordionGroup>
+
+## Notifications
+
+Control which events trigger a system notification from Kyrou:
+
+- **Update available** — Notifies you when a new version has been detected on the releases channel.
+- **Update installed** — Notifies you once an update has been successfully downloaded and applied.
+- **Update failed** — Notifies you if an update attempt encountered an error, so you can take action (such as manually triggering a retry or checking your connection).
+
+You can enable or disable each notification type independently to keep only the alerts that matter to you.
+
+## Resetting to Defaults
+
+If you want to restore all settings to their original state, open **Settings > Advanced > Reset to Defaults**. This reverts every option — including update behavior, startup settings, and notification preferences — back to the values Kyrou shipped with.
+
+<Tip>
+  Enabling both **Launch at Login** and **Auto-Update** is the simplest way to ensure Kyrou always runs in the background and your software stays current with zero manual effort.
+</Tip>
