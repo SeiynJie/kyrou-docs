@@ -1,0 +1,45 @@
+---
+title: Desktop (Tauri)
+description: How Kyrou ships as a signed Windows desktop app by wrapping the web build in Tauri.
+---
+
+## What it does
+
+Kyrou ships as a Windows desktop app by wrapping the same web build in Tauri — a Rust shell that loads the Vite production build (`dist/`) into a native window, adds OS integration (tray/minimize, global hotkey, autostart, auto-update), and packages it as an NSIS installer.
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src-tauri/tauri.conf.json` | Main Tauri config: product name, version, window size, bundle targets, updater endpoint + pubkey |
+| `src-tauri/src/main.rs` / `src-tauri/src/lib.rs` | Rust entry point and app setup (tray, plugins, commands like `set_minimize_to_tray`) |
+| `src/features/settings/lib/updater.ts` | Frontend side of auto-update — see [Settings & Updates](/features/settings-updates) |
+| `src/features/settings/lib/globalHotkey.ts` | Registers the OS-level "open Kyrou" hotkey |
+
+## Key facts (from `src-tauri/tauri.conf.json`)
+
+- **Product name**: Kyrou · **identifier**: `app.kairo.desktop` · **version**: kept in sync with `package.json`-style semver (currently `0.1.2`)
+- **Frontend source**: `../dist` (the Vite production build) — `beforeBuildCommand` runs `npm run build` automatically
+- **Bundle target**: `nsis` only (Windows installer) — `createUpdaterArtifacts: true` so each build also emits the signed update manifest
+- **Window**: 1200x800, resizable, `dragDropEnabled: false`
+- **Updater endpoint**: `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json` (a public releases-only repo — the source repo is private), verified against an embedded minisign public key baked into the config
+
+Plugins used: `autostart`, `global-shortcut`, `process`, `updater` (see the `@tauri-apps/plugin-*` entries in `package.json`).
+
+## Key concepts / how it connects
+
+- **HashRouter, not BrowserRouter.** `src/App.tsx` uses `HashRouter` specifically because the desktop build loads from a `file://` path, where path-based routing can't resolve. If you ever see routing break only in the desktop build, this is the first thing to check.
+- **`isDesktop()`** (`src/features/settings/lib/updater.ts`) is the single check used everywhere to branch desktop-only behavior (`'__TAURI_INTERNALS__' in window`).
+- **Auto-update is two-sided**: the frontend (`updater.ts`) calls the Tauri updater plugin to check/download/install; the *publishing* side is the release pipeline (see [Release](/release)) which must produce a signed `latest.json` matching the pubkey in `tauri.conf.json` for update checks to succeed.
+- **Local dev vs desktop dev**: `npm run dev` runs the plain Vite web app; `npm run app:dev` (`tauri dev`) launches the same app inside the Tauri shell for testing desktop-only behavior (tray, hotkey, updater).
+- **Tray & global hotkey**: left-clicking the tray icon shows/focuses the window (the tray menu still has Show/Quit). The `Ctrl+Shift+X` global hotkey is a *toggle* with focus-first semantics — hidden/unfocused → show + focus; already focused → hide to tray (`globalHotkey.ts`).
+
+  The hotkey is owned **exclusively** by the OS-level registration in `globalHotkey.ts`. It must never also exist as an in-app DOM action in `useKeyboardShortcuts` — it did until 2026-07-16, and the two handlers cancelled each other out whenever the window was focused, which is why the shortcut appeared dead on a fresh launch until you closed the window once. Note `detectShortcutConflicts.ts` cannot catch this: it only finds duplicate binds *within the app's own map*, and is blind to a bind claimed by both the DOM layer and the OS layer. If registration fails (usually another app already owns the accelerator), a toast now says so and points at Settings → Keyboard — without it the failure is invisible, since a release build has no devtools console and `plugin-log` is not a JS dependency.
+- **Logging**: `tauri_plugin_log` writes an Info-level log file to the OS app-log directory in **all** builds (release included) — check it when tray/shortcut/updater behavior misfires in the field; dev builds also log to stdout.
+
+## Where to start editing
+
+- Window size/behavior, bundle targets, updater endpoint -> `src-tauri/tauri.conf.json`.
+- Native OS integration (tray, custom commands invoked from the frontend via `invoke(...)`) -> `src-tauri/src/lib.rs`.
+- Frontend update-check UX -> `src/features/settings/lib/updater.ts` and `UpdatesPage.tsx`.
+- Cutting an actual signed release -> [Release](/release).

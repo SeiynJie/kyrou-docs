@@ -1,0 +1,53 @@
+---
+title: Documentation
+description: How the Kyrou docs site is structured, previewed, and deployed on Mintlify.
+---
+
+This docs site is a static Mintlify site that lives entirely inside **`docs-site/`** in the main Kyrou repo — it is not a separate project.
+
+## Where pages live
+
+```
+docs-site/
+  docs.json                nav structure, site title/description/theme
+  index.mdx                landing page
+  orientation.mdx
+  future-features.mdx
+  release.mdx
+  features/
+    today.mdx, calendar.mdx, week.mdx, inbox-projects.mdx,
+    quick-add.mdx, settings-updates.mdx, desktop-tauri.mdx
+  editing/
+    styling.mdx, features.mdx, documentation.mdx   (this page)
+```
+
+Every page is Markdown with JSX/MDX components available (`<Tip>`, `<Warning>`, `<Note>`, `<Card>`, code-block groups, etc. — see the [Mintlify components docs](https://mintlify.com/docs/components) if you need them, but plain Markdown is fine for most edits).
+
+## Live preview while editing
+
+```bash
+npx mint dev
+```
+
+Run from inside `docs-site/`. This starts a local hot-reloading preview — open the printed `localhost` URL, edit any `.mdx` file, and see it update instantly.
+
+## Adding or renaming a page
+
+1. Create/edit the `.mdx` file under `docs-site/`.
+2. If it's a *new* page (not just an edit to an existing one), add it to a group in **`docs-site/docs.json`** so it's actually reachable — Mintlify doesn't auto-discover pages into the nav. Page paths in `docs.json` omit the `.mdx` extension (e.g. `"features/today"`).
+3. Preview with `npx mint dev` to confirm the link resolves and the page renders as expected.
+
+## Checking and shipping
+
+```bash
+npx mint broken-links   # catches dead internal links before you push
+```
+
+Deployment is automatic: pushing to `main` with changes under `docs-site/` triggers a Mintlify build + deploy — no manual deploy step. Just commit and push. See [Running & Deploying](/deploy) for first-time dashboard setup.
+
+## Quick checklist for a docs change
+
+- [ ] Edited the right `.mdx` file (content only — leave `docs.json` and `index.mdx` alone unless you're intentionally changing nav/landing)
+- [ ] New page added to `docs.json` navigation if applicable
+- [ ] `npx mint broken-links` passes locally
+- [ ] Internal links (`[text](/path)`) resolve, with no `.mdx`/`.md` extension

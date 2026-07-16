@@ -1,0 +1,71 @@
+---
+title: Running & Deploying the Docs
+description: How to preview the Kyrou docs site locally and connect it to Mintlify for automatic hosting.
+---
+
+This page is the full walkthrough for running this docs site on your machine and putting it online. Run every command from the **repo root** (`Kairo/`), not from inside `docs-site/`.
+
+## Preview locally
+
+```bash
+npx mint dev
+```
+
+Run this from inside `docs-site/` (or point it at that folder). Opens a hot-reloading local preview — the URL is printed, usually `http://localhost:3000`. Edit any `.mdx` file and it updates instantly.
+
+<Tip>
+Mintlify includes built-in AI-powered search/chat over your docs content — there's no separate chat widget or API key to manage anymore.
+</Tip>
+
+## How hosting actually works
+
+The **`Kairo`** app repo is private, and Mintlify can't read a private repo. So `docs-site/` isn't served directly from here — it's mirrored to a separate **public**, dedicated repo, **`SeiynJie/kyrou-docs`**, and Mintlify is connected to *that* repo instead. `kyrou-docs` exists only to host the docs mirror — it's separate from `SeiynJie/kyrou-releases`, which carries the app's release binaries and updater manifest and has nothing to do with docs hosting.
+
+`docs-site/` in **this** repo remains the source of truth.
+
+<Warning>
+**Always edit here, never edit `kyrou-docs` by hand.** The sync uses `rsync --delete`, so any change made directly in `kyrou-docs` is silently destroyed on the next publish — there is no merge, no warning, just overwritten.
+</Warning>
+
+The mirror is kept in sync by the **Publish Docs** GitHub Actions workflow (`.github/workflows/docs-publish.yml`):
+
+- It runs automatically on every push to `main` that touches `docs-site/`, and on-demand via `workflow_dispatch`. It's also invoked from `release.yml` (a `publish-docs` job, `needs: release`), so every release refreshes the docs site too — see [Release](/release).
+- It checks out `SeiynJie/kyrou-docs` and copies `docs-site/**` over its root (so `docs.json` lands at the repo root, where Mintlify expects it), preserving that repo's `README.md` and git history.
+- It commits and pushes only if something actually changed, with a message referencing the source commit SHA.
+- It authenticates with the **`KYROU_DOCS_TOKEN`** secret — a fine-grained PAT with **Contents: Read/write** scoped to `kyrou-docs` only. The existing `KYROU_RELEASES_TOKEN` cannot be reused here: it's a fine-grained PAT scoped to `kyrou-releases` only, so it has no write access to `kyrou-docs`. `KYROU_DOCS_TOKEN` does not exist yet — creating it is a pending manual step.
+
+## First-time hosting setup with Mintlify
+
+`kyrou-docs` is already connected to Mintlify, so this section is historical/reference — nothing to redo. For a future project going through the same setup:
+
+1. Push your `docs-site/` changes to `main` (or run the **Publish Docs** workflow manually: Actions tab → Publish Docs → Run workflow) so the docs mirror repo has current content before you connect to it.
+2. Go to **[dashboard.mintlify.com](https://dashboard.mintlify.com)** and sign in.
+3. Create (or select) your project and connect it to the **`SeiynJie/kyrou-docs`** GitHub repo (not `Kairo` — that repo is private and unreachable — and not `kyrou-releases`, which is unrelated to docs).
+4. Set the **docs directory** to the repo root — `docs.json` and all the `.mdx` pages are mirrored there.
+5. Save. Mintlify builds and publishes the site, and gives you a live URL (a `mintlify.app` subdomain, or a custom domain if you configure one).
+
+## Ongoing deploys (automatic)
+
+Every push to `main` here that touches `docs-site/` (and every release) fires the **Publish Docs** workflow, which mirrors the change into `kyrou-docs`. Mintlify sees that push and rebuilds + redeploys automatically. **Your PC can be off** — the site stays online.
+
+Note the two-hop chain: this repo → `kyrou-docs` → Mintlify. If the site looks stale, check the **Publish Docs** run here *before* blaming the Mintlify build.
+
+```bash
+git add -A
+git commit -m "docs: update <page>"
+git push   # Publish Docs runs automatically
+```
+
+Watch build status on the Mintlify dashboard. A failed build is almost always a dead internal link or invalid `docs.json` — run `npx mint broken-links` locally first to catch it.
+
+## Retiring the old Cloudflare Pages project
+
+This docs site previously deployed via Cloudflare Pages (VitePress + a Cloudflare Function for AI chat). That setup is retired:
+
+- The Cloudflare Pages project connected to this repo can be deleted from the Cloudflare dashboard (**Workers & Pages → your project → Settings → Delete project**) once Mintlify hosting is confirmed working.
+- The `GEMINI_API_KEY` secret on that project is no longer needed — Mintlify's built-in AI doesn't use it.
+- If Cloudflare Access was used to gate the site (see the old [Access Control](/access) setup), remove that Access application too once the Cloudflare project is gone.
+
+## Lock it down
+
+Mintlify supports access control (SSO / password-protected docs) on paid plans — see the [Access Control](/access) page for what applies to this project.

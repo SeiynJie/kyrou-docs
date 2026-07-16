@@ -1,0 +1,48 @@
+---
+title: Today
+description: The main daily planner screen with Planner, Calendar, and Markdown modes over one source of truth.
+---
+
+## What it does
+
+The Today screen (`/today`) is the main daily planner. It has three modes, switchable via the view tabs (or the `Shift+C` shortcut, which cycles Planner -> Calendar -> Markdown): a **Planner** list view, a **Calendar** time-grid view, and a **Markdown** freeform text view of the same day's tasks. All three modes read and write the exact same `tasks` table — there is one source of truth, just three lenses on it.
+
+Alongside the main panel, a **Backlog sidebar** lists tasks that are overdue or have no date, so you can drag them onto today.
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src/features/today/components/TodayPage.tsx` | Orchestrator — picks which of Planner / Calendar / Markdown to render based on `uiStore.todayView`, and shows/hides the backlog sidebar |
+| `src/features/today/components/PlannerView.tsx` | The list-based planner (scheduled + unscheduled sections) |
+| `src/features/today/components/TaskCard.tsx` | A single task row/card — checkbox, title, time, priority indicator |
+| `src/features/today/components/TaskSection.tsx` | Groups tasks into labeled sections (e.g. "Morning", "Unscheduled") |
+| `src/features/today/components/TaskDetailSheet.tsx` | Bottom sheet / dialog for viewing & editing one task's full detail (notes, subtasks, project, priority) |
+| `src/features/today/components/BacklogSidebar.tsx` | Sidebar listing overdue/undated tasks, draggable onto the day |
+| `src/features/today/components/ContextMenu.tsx` | Right-click / long-press menu for task actions |
+| `src/features/today/components/PlanningRitual.tsx` | Guided "plan your day" flow |
+| `src/features/today/components/QuickAddInput.tsx` | Inline quick-add field embedded in the planner |
+| `src/features/today/components/TimeBlock.tsx` / `UnscheduledBlock.tsx` | Rendering helpers used by the planner for scheduled vs. unscheduled tasks |
+| `src/features/today/components/MarkdownView.tsx` | Renders the day's tasks as an editable markdown document |
+| `src/features/today/components/MarkdownEditor.tsx` | CodeMirror-based editor instance backing Markdown mode |
+| `src/features/today/components/MarkdownLeaveGuard.tsx` | Mounted globally in `App.tsx`; intercepts navigation away from Markdown mode while there are unsaved edits |
+| `src/features/today/components/ModeHelp.tsx` | Inline help/legend for markdown syntax |
+| `src/features/today/components/editorKeybindings.ts` | CodeMirror keybinding config for the markdown editor |
+| `src/features/today/components/hideIdMarkers.ts` | Hides internal task-ID markers embedded in the markdown text so you only see human-readable content |
+
+Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features/calendar)) — `TodayPage` just mounts `<UnifiedCalendar mode="today" />`.
+
+## Key concepts / how it connects
+
+- **One data source, three views.** Planner, Calendar, and Markdown all call the same repository functions from `src/db/repositories/taskRepository.ts` (e.g. `useTodayTasks()`). Editing a task's time in Calendar mode and then switching to Markdown mode shows the change instantly — there's no separate "markdown state" to sync.
+- **Markdown mode is a serialization, not a separate model.** `src/lib/taskMarkdown.ts` and `src/lib/markdownSave.ts` convert between the `Task[]` array and a markdown text blob (and back on save). Task IDs are embedded as hidden markers (stripped from view by `hideIdMarkers.ts`) so edits can be matched back to the right database row.
+- **Today's heading is always there.** Opening Markdown mode on a day with no tasks used to give you a blank document — and since a task line must sit under a `## <date>` heading to save at all, there was nothing useful to type. `serializeTasks` now takes an opt-in `ensureToday` flag that seeds today's heading plus a ready `- [ ] ` line. The flag defaults to *off* on purpose: `MarkdownView` also calls `serializeTasks` to append newly-created tasks to an already-dirty document, and injecting there would emit a second today heading. A blank `- [ ] ` with no ID marker parses to nothing rather than an error, so the placeholder never blocks Save and simply disappears when the document re-serializes after saving.
+- **Leaving Markdown mode with unsaved changes** is guarded: `uiStore` tracks a `markdownDirty` flag; `MarkdownLeaveGuard` (mounted globally) intercepts route/view changes and prompts before discarding edits.
+- **Backlog membership is date-based, not status-based.** `getBacklogTasks()` in `taskRepository.ts` returns tasks that are either undated or have a date before today and aren't done — there's no separate "backlog" flag on a task.
+
+## Where to start editing
+
+- Changing what a task card shows -> `TaskCard.tsx`.
+- Changing planner layout/sections -> `PlannerView.tsx` + `TaskSection.tsx`.
+- Changing markdown syntax/behavior -> `MarkdownEditor.tsx`, `taskMarkdown.ts`, `markdownSave.ts`.
+- Adding a new task action (e.g. a context-menu item) -> `ContextMenu.tsx`.

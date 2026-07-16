@@ -1,0 +1,23 @@
+---
+title: Access Control
+description: Restricting who can read the Kyrou docs site on Mintlify.
+---
+
+<Note>
+This project previously used Cloudflare Access (a GitHub-login wall in front of Cloudflare Pages) to restrict the docs site. That setup is retired along with Cloudflare Pages hosting — see [Running & Deploying](/deploy) for the Mintlify migration.
+</Note>
+
+## Restricting access on Mintlify
+
+Mintlify offers access control (SSO, password protection) as a dashboard setting on eligible plans — no repo changes needed, similar in spirit to the old Cloudflare Access wall:
+
+1. Go to **[dashboard.mintlify.com](https://dashboard.mintlify.com)** → your project → **Settings**.
+2. Look for authentication / access-control options (SSO provider, or a simple password gate depending on plan).
+3. Configure the allowed identities the same way the old GitHub-only policy worked: allow only the accounts that should read the docs.
+
+If your current plan doesn't include access control, the docs site is public to anyone with the URL — same tradeoff the `*.pages.dev` URL had by default before Cloudflare Access was configured.
+
+## Notes
+
+- **No repo changes.** Access settings live entirely on the Mintlify dashboard, not committed to Kyrou.
+- **Removing the lock:** turn off the access-control setting in the Mintlify project settings and the site is public again.

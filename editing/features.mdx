@@ -1,0 +1,74 @@
+---
+title: Editing Features
+description: The repository pattern for adding or changing task/project data, end to end.
+---
+
+## The repository pattern, end to end
+
+Every piece of task/project data flows through the same chain (see [Orientation](/orientation) for the diagram). Concretely, that means changes to what a `Task` *is* touch a predictable, small set of files, always in the same order:
+
+1. **`src/types/task.ts`** — the shared TypeScript shape (`Task`, `Project`, `SubTask`, `Priority`, `TaskStatus`). Add your new field here first so the compiler tells you everywhere else that needs updating.
+2. **`src/db/index.ts`** — the Dexie schema. Add a new `db.version(N).stores({...})` block if the field needs to be indexed/queryable; if it's just an extra property on the object (not indexed), you may not need a schema bump at all — Dexie stores whatever shape you give it, only indexed fields need declaring in `.stores(...)`.
+3. **`src/db/repositories/taskRepository.ts`** (or `projectRepository.ts`) — add/update the typed function that reads or writes the field. This is the only file allowed to call `db.tasks.*` / `db.projects.*` directly.
+4. **The component** — consume the field via a `useLiveQuery`-backed hook from the repository (e.g. `useTodayTasks()`), never via a raw Dexie call.
+
+### Worked example: adding a `dueTime` field to Task
+
+```ts
+// 1. src/types/task.ts
+export interface Task {
+  // ...existing fields
+  dueTime: string | null   // 'HH:mm', separate from startTime
+}
+```
+
+```ts
+// 2. src/db/index.ts — only needed if you want to query/index by it;
+// otherwise skip straight to step 3 and let existing rows default via
+// your repository's create/update functions.
+db.version(3).stores({
+  tasks: '++id, date, status, projectId, order, priority', // unchanged if not indexed
+  projects: '++id, name, emoji',
+})
+```
+
+```ts
+// 3. src/db/repositories/taskRepository.ts
+export async function setDueTime(id: number, dueTime: string | null) {
+  return updateTask(id, { dueTime })
+}
+```
+
+```tsx
+// 4. component — e.g. TaskDetailSheet.tsx
+const tasks = useTodayTasks()
+// tasks[i].dueTime is now typed and available
+```
+
+Note the `// ponytail:` comment style already used in the codebase (e.g. in `taskRepository.ts` and `globalHotkey.ts`) for deliberate simplifications — leave a similar note if you're taking a shortcut with a known ceiling.
+
+## Store vs. domain state
+
+`src/stores/uiStore.ts` and `src/stores/settingsStore.ts` are Zustand stores. They hold **ephemeral UI state only**: which modal is open, the selected task ID, the current view tab, whether markdown has unsaved edits, keyboard-shortcut bindings, theme preference. They must never hold task/project data — that always lives in Dexie and is read via a repository hook. A quick test: "would losing this on page reload be fine, or would the user lose real data?" UI state -> store. Real data -> Dexie.
+
+## Feature-folder convention
+
+New feature work goes under `src/features/{feature}/`, with UI split as:
+
+```
+src/features/{feature}/
+  {Feature}Page.tsx        top-level page/route target (if it's a routed screen)
+  components/              feature-specific components
+  hooks/                    feature-specific hooks (if any)
+  lib/                      feature-specific non-React logic (if any)
+```
+
+Look at an existing feature (e.g. `src/features/quickadd/`) as the template — components in `components/`, parsing logic in a flat file (`nlpParser.ts` actually lives in shared `src/lib/` since other features could reuse it), tests colocated next to the file they cover (`QuickAddModal.test.ts`).
+
+Shared, non-feature-specific UI (buttons, modals, switches) belongs in `src/components/ui/`, not inside a feature folder — see [Editing -> Styling](/editing/styling) for that layer.
+
+## Before considering a change done
+
+- `npx vitest run` — tests pass
+- `npm run lint` — oxlint clean
+- `npm run build` — `tsc -b && vite build` succeeds (this is also where a missed Dexie schema/type update usually surfaces as a type error)

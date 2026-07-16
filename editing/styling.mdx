@@ -1,0 +1,124 @@
+---
+title: Styling
+description: The Tailwind v4 token system, dark/light theming, and the Button component as a worked example.
+---
+
+## The token system
+
+Kyrou has no `tailwind.config.js` — Tailwind v4 is configured entirely inline in **`src/index.css`** via an `@theme` block. That block defines CSS custom properties like `--color-surface`, `--color-primary`, `--color-on-secondary`, `--radius-lg`, and font families. Tailwind then auto-generates matching utility classes (`bg-surface`, `text-on-secondary`, `rounded-lg`, ...).
+
+```css
+/* src/index.css */
+@theme {
+  --color-surface: #141313;
+  --color-secondary: #4648d4;
+  --color-on-secondary: #ffffff;
+  --radius-lg: 0.5rem;
+  /* ...more tokens */
+}
+```
+
+**Rule: never hardcode a color in a component** (no `bg-[#141313]`, no inline `style` prop with a literal hex color). Always use a token class. If the color you need doesn't have a token yet, add one to the `@theme` block (or extend the light-theme override below) rather than reaching for a literal.
+
+`DESIGN.md` (repo root) is the authority on what tokens exist and what they're for — check it before inventing a new token, and update it if you add one. `npm run design:lint` checks the file for consistency, and `npm run design:export:tailwind` can regenerate a Tailwind-compatible export from it.
+
+## Dark / light theming
+
+Dark is the default and is just the token values written directly in `:root`/`@theme`. Light mode is a **second set of the same custom properties**, scoped under `[data-theme="light"]`:
+
+```css
+/* src/index.css */
+[data-theme="light"] {
+  --color-surface: #fdfcff;
+  --color-on-surface: #1b1b1f;
+  /* ... */
+}
+```
+
+`src/lib/theme.ts` is what flips the attribute:
+
+```ts
+export function applyTheme(pref: ThemePref): void {
+  document.documentElement.dataset.theme = resolveTheme(pref)
+}
+```
+
+`resolveTheme` turns a stored preference (`'light' | 'dark' | 'system'`) into an actual `'light' | 'dark'`, and `initThemeSync()` applies it on load and keeps it synced to both the settings store and the OS `prefers-color-scheme` media query. Because component classes reference tokens (`bg-surface`, not a literal hex), the exact same JSX renders correctly in both themes automatically — there is nothing to change per-component when someone switches themes.
+
+## Worked example: restyling `Button`
+
+`src/components/ui/Button.tsx` is a good example of the whole pattern in one file:
+
+```tsx
+const variantStyles: Record<ButtonVariant, string> = {
+  primary: 'bg-secondary text-on-secondary font-bold shadow-lg shadow-secondary/10 hover:opacity-90 active:scale-95',
+  secondary: 'border border-outline-variant/30 text-on-surface font-medium hover:bg-surface-container-high',
+  ghost: 'border border-outline-variant/60 text-on-surface hover:bg-surface-container-high',
+  danger: 'text-error hover:bg-error-container/50',
+  action: 'bg-white text-[#1b1b1f] font-medium hover:opacity-90 active:scale-95',
+  tonal: 'bg-primary/10 text-primary hover:bg-primary/20',
+}
+
+const sizeStyles: Record<ButtonSize, string> = {
+  sm: 'px-2 py-1 text-body-sm',
+  md: 'px-6 py-3 text-body-md',
+  lg: 'px-8 py-4 text-body-lg',
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = 'primary', size = 'md', className, children, ...props }, ref) => (
+    <button
+      ref={ref}
+      className={cn(
+        'rounded-lg font-medium transition-all duration-200 disabled:opacity-30 ...',
+        variantStyles[variant],
+        sizeStyles[size],
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+)
+```
+
+### (a) Changing the button's own look
+
+To change what "primary" looks like everywhere, edit `variantStyles.primary` — e.g. swap `bg-secondary` for a new token, or add `rounded-full`. Because every `<Button variant="primary">` in the app shares this one object, the change applies globally in one edit. To add a whole new variant (e.g. `outline`), add a key to `ButtonVariant`, add a matching entry to `variantStyles`, done — no other file needs to change.
+
+`tonal` is the most recent example of exactly that (added 2026-07-16): the Week header's `Today` and the calendar's `Now` had drifted into two different looks for the same "jump to current time" action. No existing variant fitted the tinted-primary treatment — `ghost` is outlined, `secondary` is bordered — so a `tonal` key was added and both call sites became `<Button variant="tonal" size="sm">`. Note it uses `bg-primary/10` rather than a hardcoded tint, so it follows the theme into light mode for free.
+
+### (b) `cn()` — the clsx + tailwind-merge pattern
+
+`cn` (from `src/lib/utils.ts`) combines `clsx` (conditionally join class strings) with `tailwind-merge` (dedupe conflicting Tailwind classes, keeping the last one). This is why `className` is accepted last in `cn(base, variantStyles[variant], sizeStyles[size], className)` — a caller passing `className="px-10"` will correctly override the variant's `px-6`, instead of both classes existing and CSS specificity/order picking a winner unpredictably.
+
+### (c) Overriding from the parent vs. the child
+
+Because `Button` forwards `className` through `cn(...)`, a parent can override spacing/sizing per-instance without touching `Button.tsx` at all:
+
+```tsx
+// override just this instance's horizontal padding
+<Button variant="primary" className="px-10">Save</Button>
+```
+
+But a `Button`'s *position* relative to its siblings (margin between buttons, alignment in a row) is not the button's job — that belongs to the parent container's layout classes, not something you pass into `className` on the button itself:
+
+```tsx
+// good: parent owns the gap/alignment
+<div className="flex items-center gap-3">
+  <Button variant="ghost">Cancel</Button>
+  <Button variant="primary">Save</Button>
+</div>
+
+// avoid: don't reach for margin utilities on the button to fake a gap
+<Button variant="primary" className="ml-3">Save</Button>
+```
+
+The rule of thumb: **the component owns its own visual identity (color, padding, radius, font-weight) via its variant/size maps; the parent owns layout (gap, alignment, width in a flex/grid) via its own container classes.** If you find yourself passing margin or flex classes into a component's `className` prop from many call sites, that's a signal the parent layout should own it instead.
+
+## Where to start editing
+
+- New color/spacing/radius token -> `src/index.css` `@theme` block (and the `[data-theme="light"]` override if it needs a different light-mode value) + update `DESIGN.md`.
+- A shared primitive's look (Button, Modal, Switch, ...) -> `src/components/ui/*.tsx`.
+- Layout spacing between elements -> the parent container's classes, not the child's.

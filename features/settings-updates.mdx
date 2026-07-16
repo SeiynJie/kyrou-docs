@@ -1,0 +1,39 @@
+---
+title: Settings & Updates
+description: The tabbed Settings modal covering preferences, theme, keyboard rebinding, dev tools, and desktop updates.
+---
+
+## What it does
+
+The Settings modal is a tabbed dialog (General, Appearance, Keyboard, Dev, Pricing, Updates) covering app preferences, theme, keyboard-shortcut rebinding, developer/seed tools, and — on the desktop build — checking for and installing app updates.
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src/features/settings/components/SettingsModal.tsx` | The modal shell + tab switching. Mounted globally in `App.tsx` |
+| `src/features/settings/components/GeneralPage.tsx` | General preferences tab |
+| `src/features/settings/components/AppearancePage.tsx` | Theme selection (light/dark/system) — see [Editing -> Styling](/editing/styling) for how theming works under the hood |
+| `src/features/settings/components/KeyboardSection.tsx` / `KeyboardShortcutRow.tsx` | List + editor for rebindable keyboard shortcuts |
+| `src/features/settings/components/KeypressCapture.tsx` | Captures a keypress combo when the user is rebinding a shortcut |
+| `src/features/settings/components/DevPage.tsx` | Developer tools (e.g. seeding demo data) |
+| `src/features/settings/components/PricingPage.tsx` | Pricing/licensing info tab |
+| `src/features/settings/components/UpdatesPage.tsx` | Manual "check for updates" UI for the desktop build |
+| `src/features/settings/components/Section.tsx` / `Toggle.tsx` | Shared layout/toggle primitives used across the settings tabs |
+| `src/features/settings/lib/updater.ts` | Tauri auto-update logic — `isDesktop()`, `checkForUpdate()`, `getAppVersion()` |
+| `src/features/settings/lib/globalHotkey.ts` | Registers the global "open Kyrou" OS-level hotkey via the Tauri global-shortcut plugin |
+| `src/features/settings/lib/seedTasks.ts` | Demo/dev task seeding, used by `DevPage.tsx` |
+
+## Key concepts / how it connects
+
+- **`isDesktop()`** (in `updater.ts`) checks for `'__TAURI_INTERNALS__' in window` — this is the standard way the whole codebase distinguishes "running as a Tauri desktop app" from "running as a plain web build." Update checks, the global hotkey, and tray behavior all no-op in the browser.
+- **Update flow**: `checkForUpdate()` calls the Tauri updater plugin's `check()`, which hits the endpoint in `src-tauri/tauri.conf.json` (`https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`). If a newer version exists, it shows a toast with an "Update" button that calls `downloadAndInstall()` then relaunches the app. See [Desktop (Tauri)](/features/desktop-tauri) for the release-side half of this.
+- **Startup update check** is orchestrated in `App.tsx`, not inside the settings feature: on first launch it asks the user via a toast whether to check on startup, and persists the answer to `settingsStore` (`updateCheckOnStartup`).
+- **Global hotkey registration is serialized** (`globalHotkey.ts` keeps a `lock` promise chain) specifically to survive React StrictMode's double-invoke of effects in dev, which would otherwise try to register the same OS-level accelerator twice.
+- Shortcut bindings themselves live in `src/stores/settingsStore.ts` (persisted) and are consumed by `useKeyboardShortcuts` in `App.tsx`; conflict detection is `src/lib/detectShortcutConflicts.ts`.
+
+## Where to start editing
+
+- Adding a new settings tab -> add a `*Page.tsx` under `components/` and wire it into `SettingsModal.tsx`.
+- Changing update-check behavior -> `updater.ts`.
+- Changing/adding a keyboard shortcut -> `settingsStore.ts` (default bindings) + `KeyboardSection.tsx` (UI) + `detectShortcutConflicts.ts` (validation).

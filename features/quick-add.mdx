@@ -1,0 +1,39 @@
+---
+title: Quick Add
+description: The fast-entry modal that parses date, time, priority, project, tags, and subtasks from plain text.
+---
+
+## What it does
+
+Quick Add is the fast-entry modal (opened globally via a keyboard shortcut) where you type a task in plain English and Kyrou parses out the date, time, duration, priority, project, tags, subtasks, and status from the text as you type — no separate fields to fill in.
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src/features/quickadd/components/QuickAddModal.tsx` | The modal itself — input field, live-parsed preview, submit handling. Mounted globally in `App.tsx` |
+| `src/features/quickadd/components/ParsingChips.tsx` | Renders the little chips showing what was parsed (date, time, priority, project, tags...) as you type |
+| `src/features/quickadd/useTokenAutocomplete.ts` | Wraps the shared `useTypeahead` hook (`src/lib/hooks/`) to autocomplete `#project` and other tokens, plus a "Create project" suggestion when a `#name` doesn't match an existing project |
+| `src/lib/nlpParser.ts` | The actual parser — `parseQuickAdd(input)` returns a `ParsedTask`. Uses `chrono-node` for date/time extraction and its own regex-based token parsing for everything else |
+
+## Key concepts / how it connects
+
+`parseQuickAdd` strips recognized tokens out of the input one pass at a time and returns what's left as the title. Recognized syntax:
+
+| Token | Meaning | Example |
+|---|---|---|
+| `chrono-node` natural dates/times | date + startTime | `tomorrow 3pm`, `next mon 9am` |
+| `#name` | project | `#phoenix` |
+| `$status` | status (`todo`, `doing`, etc. map to `TaskStatus`) | `$doing` |
+| `p1`/`p2`/`p3`/`high`/`med`/`low` style tokens | priority | `!high` (see `nlpParser.ts` for exact grammar) |
+| `-- subtask text` | one or more subtasks, everything after `--` | `Plan trip -- book flights -- pack` |
+
+- **`durationExplicit`** on the returned `ParsedTask` distinguishes "user typed a duration" from "defaulted to 30 minutes" — used so the UI doesn't show a duration chip for a default it invented.
+- **Autocomplete is layered on top of parsing, not part of it.** `useTokenAutocomplete` watches the raw input and the caret position to offer project-name completions; `nlpParser.ts` has no knowledge of the project list — it just extracts whatever string follows `#`.
+- Submitting the modal calls the same task-repository create function used everywhere else (`src/db/repositories/taskRepository.ts`) — Quick Add is purely an input-parsing layer in front of the same data flow described in [Orientation](/orientation).
+
+## Where to start editing
+
+- Adding a new parseable token (e.g. a new syntax) -> `src/lib/nlpParser.ts`, then surface it as a chip in `ParsingChips.tsx`.
+- Changing autocomplete behavior -> `useTokenAutocomplete.ts` and the shared `useTypeahead` hook.
+- `QuickAddModal.test.ts` in the same folder is the existing test coverage to extend when you touch parsing behavior.

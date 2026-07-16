@@ -1,0 +1,88 @@
+---
+title: Orientation
+description: The mental model you need before touching any Kyrou code — stack, source map, routing, data flow, and date/time conventions.
+---
+
+Kyrou is a **local-first, mobile-first daily planner**. There is no backend, no auth, and no external API calls in v0.1 — everything lives in your browser's IndexedDB (or, in the desktop build, the same thing wrapped by Tauri). This page is the mental model you need before touching any code.
+
+## The stack
+
+| Layer | Tech |
+|---|---|
+| UI framework | React 19 + Vite + TypeScript |
+| Styling | Tailwind CSS 4 (`@theme` tokens, no config file) |
+| Persistence | Dexie (IndexedDB wrapper), database name `KairoDB` |
+| App/UI state | Zustand |
+| Drag & drop | @dnd-kit |
+| Natural-language parsing | chrono-node (powers Quick Add) |
+| Desktop packaging | Tauri (Rust shell, NSIS installer on Windows) |
+
+## The `src/` map
+
+```
+src/
+  main.tsx          entry point, mounts <App/>
+  App.tsx           router + global overlays (see below)
+  stores/           Zustand stores — ephemeral UI state only
+  db/                Dexie schema, seed data, backup/import, repositories
+  lib/               framework-agnostic utilities + hooks
+  components/        shared layout & ui primitives (not feature-specific)
+  types/             shared TypeScript types (Task, Project, ...)
+  features/          one folder per feature area (today, week, calendar, ...)
+```
+
+The `@/` path alias maps to `src/` (configured in `vite.config.ts` and `tsconfig.app.json`), so imports read `import { Task } from '@/types/task'` instead of a chain of `../../..`.
+
+## Routing and global overlays
+
+`src/App.tsx` uses **`HashRouter`**, not `BrowserRouter`. This is required because the Tauri desktop build loads the app from a `file://` URL, where a normal history-based router can't resolve paths.
+
+Routes (all wrapped in `AppLayout`, from `src/components/layout/AppLayout.tsx`):
+
+| Path | Page |
+|---|---|
+| `/today` | `TodayPage` (planner / calendar / markdown for a single day) |
+| `/week` | `WeekPage` (7-day view) |
+| `/inbox` | `InboxProjectsPage` (backlog + project management) |
+| `*` | redirects to `/today` |
+
+A handful of things are mounted once at the App root, outside any route, because they're global overlays that can pop up from anywhere: `QuickAddModal`, `TaskDetailSheet`, `SettingsModal`, `CreateProjectModal`, `MarkdownLeaveGuard`, and `ToastContainer` (react-toastify). A `GlobalShortcuts` component (also defined in `App.tsx`) wires up keyboard shortcuts via `useKeyboardShortcuts` (`src/lib/hooks/`) — things like opening Quick Add, toggling the backlog, cycling Planner/Calendar/Markdown mode, and cycling Today/Week/Inbox views.
+
+## The golden data-flow rule
+
+There is exactly one path data takes, and components are not allowed to shortcut it:
+
+```
+UI component
+   |  calls a typed function
+   v
+repository function (src/db/repositories/*.ts)
+   |  reads/writes
+   v
+Dexie (IndexedDB) — table `tasks` or `projects`
+   |  useLiveQuery subscribes to changes
+   v
+component re-renders automatically
+```
+
+Concretely: `src/db/repositories/taskRepository.ts` exports plain async functions (`getTasksByDate`, `moveTaskToDate`, ...) plus React hooks built on `useLiveQuery` from `dexie-react-hooks` (`useTodayTasks`, `useTasksForRange`). `src/db/repositories/projectRepository.ts` does the same for projects.
+
+**Components must never `import db from '@/db'` directly** — always go through a repository function. This keeps every read/write typed and testable in one place, and it means the UI never manually manages "loading" state or refetch logic — `useLiveQuery` re-runs the query whenever the underlying table changes.
+
+Zustand (`src/stores/uiStore.ts`, `src/stores/settingsStore.ts`) is for the *other* kind of state — things that aren't domain data: which modal is open, which task is selected, which view tab is active, unsaved-markdown tracking, keyboard-shortcut bindings. If it should survive a page reload and represents "your data," it belongs in Dexie. If it's transient UI state, it belongs in a store.
+
+## Dates and times are strings, never `Date`
+
+Persisted fields use plain strings:
+
+- Dates: `'YYYY-MM-DD'` (e.g. `'2026-07-14'`)
+- Times: `'HH:mm'` (e.g. `'09:30'`)
+
+No `Date` objects are stored on a `Task` or `Project`. This sidesteps timezone bugs entirely — a task scheduled for a date is scheduled for that literal calendar date, not a UTC instant. Helpers for formatting/parsing live in `src/lib/date.ts`, `src/lib/time.ts`, and `src/lib/duration.ts`.
+
+## Where to go next
+
+- Building or editing a specific screen -> the **Features** section in the sidebar.
+- Changing colors, spacing, or a component's look -> [Editing -> Styling](/editing/styling).
+- Adding a field to a task, or a new feature folder -> [Editing -> Features](/editing/features).
+- Cutting a release -> [Release](/release).

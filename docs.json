@@ -1,41 +1,59 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
   "name": "Kyrou",
-  "theme": "luma",
+  "description": "Documentation for Kyrou, a local-first daily planner.",
   "colors": {
-    "primary": "#18E299",
-    "light": "#18E299",
-    "dark": "#0C8C5E"
+    "primary": "#4648d4",
+    "light": "#6063ee",
+    "dark": "#4648d4"
+  },
+  "logo": {
+    "light": "/logo.svg",
+    "dark": "/logo.svg"
   },
   "favicon": "/favicon.svg",
   "navigation": {
     "groups": [
       {
-        "group": "Get Started",
+        "group": "Getting Started",
         "pages": [
-          "introduction",
-          "quickstart",
-          "installation"
+          "index",
+          "orientation",
+          "access",
+          "deploy",
+          "release",
+          "future-features"
         ]
       },
       {
-        "group": "Using Kyrou",
+        "group": "Features",
         "pages": [
-          "auto-updates",
-          "releases",
-          "settings"
+          "features/today",
+          "features/calendar",
+          "features/week",
+          "features/inbox-projects",
+          "features/quick-add",
+          "features/settings-updates",
+          "features/desktop-tauri"
         ]
       },
       {
-        "group": "Support",
+        "group": "Editing",
         "pages": [
-          "troubleshooting",
-          "faq"
+          "editing/styling",
+          "editing/features",
+          "editing/documentation"
         ]
       }
     ]
   },
   "navbar": {
+    "links": [
+      { "label": "Guide", "href": "/orientation" },
+      { "label": "Features", "href": "/features/today" },
+      { "label": "Editing", "href": "/editing/styling" }
+    ],
     "primary": {
       "type": "button",
       "label": "Download",

@@ -1,0 +1,31 @@
+---
+title: Week
+description: The seven-day view, reusing Today's planner and calendar building blocks.
+---
+
+## What it does
+
+The Week screen (`/week`) shows seven days side by side, in either a planner-list layout or the shared time-grid calendar (see [Calendar](/features/calendar)) — same Planner/Calendar/Markdown mode-switching concept as Today, just scoped to a week instead of a single day.
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src/features/week/components/WeekPage.tsx` | Route target for `/week`; orchestrates the week view similarly to `TodayPage` |
+| `src/features/week/components/WeekPlannerView.tsx` | List-based planner laid out across seven day columns |
+| `src/features/week/components/WeekColumn.tsx` | A single day's column within the planner layout |
+| `src/features/week/components/WeekHeader.tsx` | Date-range header / day labels + navigation (prev/next week) |
+
+Calendar mode within Week reuses `src/features/calendar/UnifiedCalendar.tsx` with `mode="week"` — there is no separate week-specific calendar grid implementation.
+
+## Key concepts / how it connects
+
+- **Reuses Today's building blocks where possible.** Week's planner columns are conceptually the same task cards/sections as Today's `PlannerView`, just tiled across 7 dates instead of 1.
+- **Data comes from `useTasksForRange(startDate, endDate)`** in `src/db/repositories/taskRepository.ts`, which returns a flat array of tasks across the visible date range; the Week components bucket that array by date client-side.
+- **View-switching (`Shift+V`)** cycles between `/today`, `/week`, and `/inbox` — wired in `GlobalShortcuts` in `src/App.tsx`.
+
+## Where to start editing
+
+- Changing the week layout/columns -> `WeekPlannerView.tsx` + `WeekColumn.tsx`.
+- Changing the date-range header or week navigation -> `WeekHeader.tsx`.
+- Changing calendar-mode behavior for the week -> see [Calendar](/features/calendar) (shared component).

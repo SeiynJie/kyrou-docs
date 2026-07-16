@@ -1,0 +1,32 @@
+---
+title: Inbox & Projects
+description: Where undated backlog tasks and project management live together in Kyrou.
+---
+
+## What it does
+
+The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and project management live together: a sortable list of tasks not yet scheduled to a date, grouped and organized by project, plus the ability to create/edit projects (name, color, emoji).
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src/features/inbox/InboxProjectsPage.tsx` | Route target for `/inbox`; top-level page composing the sections below |
+| `src/features/inbox/components/CollapsibleSection.tsx` | Expand/collapse wrapper used to group tasks (e.g. per project) |
+| `src/features/inbox/components/CreateProjectModal.tsx` | Modal for creating/editing a project; mounted globally in `App.tsx` so it can be opened from anywhere |
+| `src/features/inbox/components/InboxTaskRow.tsx` | A single task row in the inbox list |
+| `src/features/inbox/components/InlineInput.tsx` | Inline text input used for quick renaming/adding without a modal |
+| `src/features/inbox/components/SortMenu.tsx` | Sort-order picker for the inbox list |
+
+## Key concepts / how it connects
+
+- **`src/features/projects/components/` exists but is currently empty.** Despite the folder scaffold, all project-related UI logic actually lives under `src/features/inbox/components/` today (`CreateProjectModal.tsx` etc.) — don't go looking in `projects/` for working code.
+- **Project CRUD goes through `src/db/repositories/projectRepository.ts`**, following the same repository pattern as tasks — never import Dexie directly from a component.
+- **Project shape**: `{ id, name, color, emoji?, createdAt, updatedAt }` (`src/types/task.ts`). Color is a hex string; emoji is optional (added in Dexie schema `version(2)`, see `src/db/index.ts`).
+- **A task's `projectId: number | null`** links it to a project; the inbox groups/filters using that field.
+
+## Where to start editing
+
+- Changing the inbox list/sort behavior -> `InboxProjectsPage.tsx` + `SortMenu.tsx`.
+- Changing project creation/edit fields -> `CreateProjectModal.tsx` (and `projectRepository.ts` if you add a field — see [Editing -> Features](/editing/features)).
+- Changing a single row's look -> `InboxTaskRow.tsx`.

@@ -1,0 +1,32 @@
+---
+title: Calendar
+description: The unified time-grid view shared by the Today and Week pages in Kyrou, with infinite scroll and zoom.
+---
+
+## What it does
+
+The Calendar is a unified time-grid view shared by both the Today page (single day) and the Week page (seven days). It renders tasks as time blocks positioned by `startTime`/`duration`, supports infinite horizontal scrolling through days/weeks, and lets you pinch/ctrl-scroll to zoom the hour height.
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src/features/calendar/UnifiedCalendar.tsx` | The calendar component itself. Takes a `mode: 'today' \| 'week'` prop so the same grid renders in both contexts |
+| `src/features/calendar/CalendarDayColumn.tsx` | A single day's column — the hour grid plus positioned task blocks |
+| `src/features/calendar/useCalendarZoom.ts` | Ctrl+wheel zoom logic; hour height persisted per-mode to `localStorage` under `kairo.cal.<mode>.hourHeight` |
+| `src/features/calendar/useInfiniteDays.ts` | Infinite-scroll day windowing — keeps a rolling buffer of days (`BUFFER_DAYS = 14`) mounted around the visible range and prepends/appends as you scroll |
+| `src/features/calendar/nowScroll.ts` | `centeredScrollTop()` — pure clamp math behind the **Now** button, which appears in both modes and scrolls to today's column (week mode) and vertically centers the current-time line |
+
+## Key concepts / how it connects
+
+- **One component, two hosts.** `TodayPage` mounts `<UnifiedCalendar mode="today" />`; `WeekPage`/`WeekPlannerView` mount it in week mode. There's no separate "day calendar" vs "week calendar" implementation to keep in sync — differences (single column vs seven, infinite horizontal scroll enabled or not) are branches inside `UnifiedCalendar` and its hooks.
+- **Task blocks read from the same repository hooks** as Planner/Markdown mode (`useTasksForRange` from `src/db/repositories/taskRepository.ts`), bucketed client-side by date.
+- **Zoom and infinite scroll are separate concerns.** `useCalendarZoom` only manipulates vertical hour height; `useInfiniteDays` only manages which day columns are mounted horizontally. Both operate on the same scroll container ref.
+- The `.time-slot { height: 80px }` rule in `src/index.css` is the default hour-row height that `useCalendarZoom` scales up/down from (`DEFAULT_HOUR_HEIGHT = 80`, clamped between 40 and 320).
+
+## Where to start editing
+
+- Changing how a task block looks/positions -> `CalendarDayColumn.tsx`.
+- Changing zoom limits or default zoom -> `useCalendarZoom.ts` (`MIN_HOUR_HEIGHT` / `MAX_HOUR_HEIGHT` / `DEFAULT_HOUR_HEIGHT`).
+- Changing how many days are buffered for infinite scroll -> `useInfiniteDays.ts` (`BUFFER_DAYS`).
+- Note: there is currently no dedicated component/test subfolder under `calendar/` — all four files live flat in `src/features/calendar/`.

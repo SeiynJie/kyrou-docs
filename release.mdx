@@ -1,0 +1,76 @@
+---
+title: Release
+description: Pre-release checklist, the lockfile rule, and the step-by-step process for cutting a Kyrou release.
+---
+
+## Pre-release checklist
+
+Run these locally before tagging anything — the CI pipeline (`.github/workflows/ci.yml`) currently only enforces the lockfile, so tests/lint/build are on you to verify:
+
+```bash
+npx vitest run
+npm run lint
+npm run build
+```
+
+Then confirm the lockfile is actually in sync (see the rule below):
+
+```bash
+npm ci
+```
+
+If `npm ci` fails, `package-lock.json` is out of sync with `package.json` — fix that *before* tagging, not after (see why below).
+
+## The lockfile rule (non-negotiable)
+
+<Warning>
+`package-lock.json` is regenerated only via `npm install` — never hand-edited. Release tags (`v*`) must point at a commit whose lockfile is in sync with `package.json`.
+</Warning>
+
+This is enforced by `.github/workflows/ci.yml`, which runs `npm ci` (Node 22) on every push/PR to `main`. It exists because the v0.1.2 release once failed: the tag pointed at a commit with a hand-edited, out-of-sync lockfile, `npm ci` requires exact sync, and the fix landed on `main` *after* the tag had already been cut — so the tag never saw it. **Only tag a commit that's already on `main` and already green on this check.**
+
+## Cutting a release
+
+1. Bump the version in **both** places (they should match):
+   - `src-tauri/tauri.conf.json` → `"version"`
+   - `package.json` → `"version"` (if you version it there too)
+2. Commit the version bump:
+   ```bash
+   git add src-tauri/tauri.conf.json package.json package-lock.json
+   git commit -m "chore: bump version to v0.1.x"
+   git push
+   ```
+3. Wait for `main`'s CI (lockfile check) to pass on that commit.
+4. Tag and push the tag:
+   ```bash
+   git tag v0.1.x
+   git push --tags
+   ```
+5. `.github/workflows/release.yml` picks up the `v*` tag:
+   1. Guards that the tag matches `version` in `src-tauri/tauri.conf.json`, failing the build if they disagree. A mismatch would ship an updater manifest advertising a version the installer never installs, so the app would re-prompt forever.
+   2. Runs `tauri-action` in **build-only** mode, producing a **signed** NSIS installer and its `.sig` (signing uses the `TAURI_SIGNING_PRIVATE_KEY` secret, matched against the public key embedded in `src-tauri/tauri.conf.json`).
+   3. **Generates `latest.json`** from the built `.exe`, its `.sig`, and the config version. `tauri-action` only emits this manifest when it publishes a release *itself*, which it does not do here — so the workflow builds it.
+   4. `softprops/action-gh-release` publishes the installer, `.sig`, and `latest.json` as a GitHub Release on **`SeiynJie/kyrou-releases`** (public) using the `KYROU_RELEASES_TOKEN` secret — the source repo stays private. `target_commitish` is pinned to that repo's `main`, since the default (this repo's commit SHA) does not exist there and the API rejects it with `400 Invalid target_commitish parameter`.
+
+   <Warning>
+   Always cut the tag from `main`. The tag decides what gets built, so a tag on a feature branch silently ships a release missing everything on `main`.
+   </Warning>
+6. The in-app updater (`src/features/settings/lib/updater.ts`) picks up the new release automatically — it polls `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`, which the release workflow just published to.
+7. A `publish-docs` job (`needs: release`) also runs, invoking `.github/workflows/docs-publish.yml` via `workflow_call` — so cutting a release also mirrors the current `docs-site/` into `kyrou-docs` and refreshes the live Mintlify site, in addition to the normal on-push trigger. See [Deploy](/deploy) for the mirror mechanics.
+
+## After a release
+
+- Sanity-check the GitHub Release page: installer asset + `latest.json` both present.
+- Optionally install the new version locally and use **Settings -> Updates -> Check for updates** ([Settings & Updates](/features/settings-updates)) on the *previous* version to confirm the update prompt actually appears and installs cleanly.
+
+## Why "Check for updates" can error
+
+The in-app updater fetches `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json` (see step 6 above), and that URL must be **publicly reachable** — the Tauri updater plugin's fetch is unauthenticated. It 404s (and the user sees an error toast) until:
+
+1. The public repo `SeiynJie/kyrou-releases` exists **and has at least one commit on `main`** (a README is enough). While the repo is empty it has no `main` ref, so there is nothing for the release to attach to and publishing fails with `400 Invalid target_commitish parameter`.
+2. A fine-grained PAT with **Contents: Read/write** on `kyrou-releases` is stored as the `KYROU_RELEASES_TOKEN` secret on the private source repo (the default `GITHUB_TOKEN` cannot write to another repo).
+3. At least one `v*` tag has been pushed so the workflow has published a release there.
+
+<Note>
+A separate secret, **`KYROU_DOCS_TOKEN`**, is used only by the docs-publish workflow (see [Deploy](/deploy)) — a fine-grained PAT with **Contents: Read/write** scoped to `kyrou-docs`. It's unrelated to the updater flow above and cannot be substituted for `KYROU_RELEASES_TOKEN` or vice versa; each token is scoped to exactly one target repo.
+</Note>
