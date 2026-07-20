@@ -17,9 +17,14 @@ Alongside the main panel, a **Backlog sidebar** lists tasks that are overdue or 
 | `src/features/today/components/PlannerView.tsx` | The list-based planner (scheduled + unscheduled sections) |
 | `src/features/today/components/TaskCard.tsx` | A single task row/card — checkbox, title, time, priority indicator |
 | `src/features/today/components/TaskSection.tsx` | Groups tasks into labeled sections (e.g. "Morning", "Unscheduled") |
-| `src/features/today/components/TaskDetailSheet.tsx` | Bottom sheet / dialog for viewing & editing one task's full detail (notes, subtasks, project, priority) |
+| `src/features/today/components/TaskDetailSheet.tsx` | Bottom sheet / dialog for viewing & editing one task's full detail (notes, subtasks, project, priority, schedule) |
+| `src/components/ui/TimePicker.tsx` | Shared M3 time picker (dial + keyboard-input variants), used by the detail sheet's Scheduled card |
 | `src/features/today/components/BacklogSidebar.tsx` | Sidebar listing overdue/undated tasks, draggable onto the day |
-| `src/components/ui/ContextMenu.tsx` | Shared right-click / long-press menu, driven by a config of menu items (built per-surface in `src/components/ui/contextMenuItems.tsx`); multi-select via right-click-drag comes from `src/features/shared/useRightClickMenu.ts` |
+| `src/components/ui/ContextMenu.tsx` | Shared right-click / long-press menu, driven by a config of menu items (built per-surface in `src/components/ui/contextMenuItems.tsx`); right-click opens the menu via `src/features/shared/useRightClickMenu.ts` |
+| `src/components/ui/TaskCheckbox.tsx` | Shared circle checkbox used for the done toggle and, in select mode, the selection indicator |
+| `src/lib/hooks/usePlannerKeyboardNav.ts` | Arrow-key navigation plus planner keyboard clipboard and Context Menu-key handling |
+| `src/lib/taskClipboard.ts` | Shared copy/cut paste mutation path for menus and keyboard shortcuts |
+| `src/lib/plannerTaskOrder.ts` | Single source of truth for sorting + morning/afternoon/evening bucketing (shared by Planner, Week column, and keyboard-nav ordering) |
 | `src/features/today/components/PlanningRitual.tsx` | Guided "plan your day" flow |
 | `src/features/today/components/QuickAddInput.tsx` | Inline quick-add field embedded in the planner |
 | `src/features/today/components/TimeBlock.tsx` / `UnscheduledBlock.tsx` | Rendering helpers used by the planner for scheduled vs. unscheduled tasks |
@@ -39,6 +44,39 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
 - **Today's heading is always there.** Opening Markdown mode on a day with no tasks used to give you a blank document — and since a task line must sit under a `## <date>` heading to save at all, there was nothing useful to type. `serializeTasks` now takes an opt-in `ensureToday` flag that seeds today's heading plus a ready `- [ ] ` line. The flag defaults to *off* on purpose: `MarkdownView` also calls `serializeTasks` to append newly-created tasks to an already-dirty document, and injecting there would emit a second today heading. A blank `- [ ] ` with no ID marker parses to nothing rather than an error, so the placeholder never blocks Save and simply disappears when the document re-serializes after saving.
 - **Leaving Markdown mode with unsaved changes** is guarded: `uiStore` tracks a `markdownDirty` flag; `MarkdownLeaveGuard` (mounted globally) intercepts route/view changes and prompts before discarding edits.
 - **Backlog membership is date-based, not status-based.** `getBacklogTasks()` in `taskRepository.ts` returns tasks that are either undated or have a date before today and aren't done — there's no separate "backlog" flag on a task.
+- **Task detail: Status/Priority/Duration/Scheduled live together in one metadata grid.** Scheduled uses the existing M3 `DatePicker` in a portaled, viewport-clamped nested popover; choosing a date commits `YYYY-MM-DD`, and Esc closes the picker before the sheet. End time is editable — changing it adjusts duration (start time never moves); an end at or before start is rejected. Duration text can be temporarily empty while edited, but empty, invalid, or below-minimum blur/Enter values restore the stored duration instead of becoming 30 minutes.
+- **Task clipboard and active date.** Shared task menus and `Ctrl+C`/`Ctrl+X`/`Ctrl+V` copy, cut, and paste focused or selected tasks. Copy duplicates to the active date; cut moves while preserving status and clears only after success. Paste uses an ephemeral active date shared by Planner and Calendar (Today always targets today). Failed pastes retain the clipboard for retry.
+- **Markdown uses Quick Add metadata parsing.** Markdown keeps headings, checkbox state, hidden IDs, subtasks, and validation, while each task body delegates token parsing to `parseQuickAdd`. Headingless lines default to Today and may use inline NLP dates; a valid heading controls its tasks' date. Pasted text is parsed live and only persisted after Save confirmation.
+- **Task detail status/priority use the shared Select.** Status and priority no longer use
+  native OS dropdowns; both render the local M3-style `Select` so the surface, menu, focus,
+  and nested-popover behavior match the rest of Kyrou. The trigger surface is constant; value
+  color appears only as a small dot beside the label.
+
+## Keyboard navigation & select mode
+
+- **Mouseless task nav.** With the planner focused, `Up`/`Down` move a focus ring across task
+  cards (auto-scrolling into view), `Enter` opens the focused task's detail sheet, and
+  `Left`/`Right` collapse/expand its subtasks. Arrow keys are ignored while typing or while a
+  modal/detail overlay is open. Focus/expansion state lives in `uiStore`
+  (`focusedTaskId`, `expandedSubtaskIds`) and the logic is in `usePlannerKeyboardNav.ts`. In
+  select mode (see below), `Enter` toggles the focused card's selection instead of opening
+  its detail sheet.
+- **`D` toggles done** while the Task Detail Sheet is focused (and you're not typing in its
+  fields).
+- **Context Menu key.** Pressing the physical Context Menu key with a focused task opens that
+  card's normal shared menu beside the card; it is the same event path as a right-click.
+- **Select mode.** A `checklist` toggle in the planner header (Today + Week) or `Shift+M`
+  turns on multi-select: task checkboxes become selection controls, tapping a card selects it
+  (instead of opening detail or toggling done), and right-clicking runs bulk context-menu
+  actions across the whole selection. Selected cards get a blue glow and lift slightly (`ring-2
+  ring-secondary` + shadow + a small upward translate) so selection is visible at a glance —
+  the checkbox itself still toggles done, unchanged. Turning select mode off clears the
+  selection. This replaces the old right-click-drag multi-select. Selection is task-level;
+  subtask-level selection is a deferred follow-up (subtasks are embedded, not separate rows).
+- **Dismissal.** All modals, the detail sheet, sidebars, and popovers are coordinated by a
+  central overlay layer: opening a modal closes others, and `Esc` closes the topmost overlay
+  first — so a picker popover inside the Task Detail Sheet closes on the first `Esc`, and the
+  sheet itself closes on the second.
 
 ## Where to start editing
 
