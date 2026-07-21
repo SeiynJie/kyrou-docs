@@ -64,7 +64,24 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
 - **`D` toggles done** while the Task Detail Sheet is focused (and you're not typing in its
   fields).
 - **Context Menu key.** Pressing the physical Context Menu key with a focused task opens that
-  card's normal shared menu beside the card; it is the same event path as a right-click.
+  card's normal shared menu beside the card, anchored to that card's position (the OS reports no
+  cursor coordinates for this key); it is the same event path as a right-click. Task rows carry
+  `tabIndex={0}` so the key can target them at all.
+- **Two-mode focus inside modals and the Task Detail Sheet.** These overlays open in **navigate**
+  mode — Up/Down/Home/End move a highlight between fields (Left/Right move within the duration
+  presets), nothing is being edited yet. Enter drops into **edit** mode and hands real focus to
+  that field; every other key belongs to it from there. Escape steps back one rung at a time —
+  edit -> navigate -> close the overlay — so leaving a field never also closes the sheet in the
+  same keypress. Opening the sheet no longer autofocuses the title; it's highlighted, not edited,
+  until you press Enter on it. The Backlog sidebar gets the same Up/Down navigation but is
+  deliberately not Tab-trapped, since it's meant to coexist with the rest of the page rather than
+  behave like a modal.
+- **Task menu keyboard nav.** The right-click/Context-Menu-key menu follows the standard menu
+  keyboard pattern: Up/Down move the highlight, Right opens a flyout (Left closes it), Home/End
+  jump to the ends, Escape closes an open flyout before the whole menu. Every task menu now leads
+  with a "Mark as done" / "Mark as not done" toggle above the usual actions — it flips every
+  selected task in the same direction (any outstanding task in the selection marks all done; all
+  done marks all outstanding).
 - **Select mode.** A `checklist` toggle in the planner header (Today + Week) or `Shift+M`
   turns on multi-select: task checkboxes become selection controls, tapping a card selects it
   (instead of opening detail or toggling done), and right-clicking runs bulk context-menu

@@ -31,6 +31,9 @@ The Settings modal is a tabbed dialog (General, Appearance, Keyboard, Dev, Prici
 - **Startup update check** is orchestrated in `App.tsx`, not inside the settings feature: on first launch it asks the user via a toast whether to check on startup, and persists the answer to `settingsStore` (`updateCheckOnStartup`).
 - **Global hotkey registration is serialized** (`globalHotkey.ts` keeps a `lock` promise chain) specifically to survive React StrictMode's double-invoke of effects in dev, which would otherwise try to register the same OS-level accelerator twice.
 - Shortcut bindings themselves live in `src/stores/settingsStore.ts` (persisted) and are consumed by `useKeyboardShortcuts` in `App.tsx`; conflict detection is `src/lib/detectShortcutConflicts.ts`.
+- **The page switcher and every settings row are keyboard-navigable via the shared roving-focus panel** (`src/lib/hooks/useRovingPanel.ts`, already wired on `Modal`). The tab strip is a `FocusStop` group with `group="horizontal"` — Left/Right switch pages, Up/Down walk down the current page's rows (`Toggle`, `KeyboardShortcutRow`, and the rows in `AppearancePage`/`UpdatesPage`/`DevPage`). Enter hands real focus to a row's control; Escape steps back out before closing the modal.
+
+<Note>Because `Modal` is not portaled, a nested dialog opened from inside Settings (`KeypressCapture`, while rebinding a shortcut) renders inside Settings' own DOM container. `useRovingPanel` explicitly ignores keys that originate inside a nested `role="dialog"` so the outer Settings panel doesn't also try to interpret them as roving-nav input.</Note>
 
 ## Where to start editing
 

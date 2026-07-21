@@ -24,6 +24,24 @@ The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and projec
 - **Project CRUD goes through `src/db/repositories/projectRepository.ts`**, following the same repository pattern as tasks — never import Dexie directly from a component.
 - **Project shape**: `{ id, name, color, emoji?, createdAt, updatedAt }` (`src/types/task.ts`). Color is a hex string; emoji is optional (added in Dexie schema `version(2)`, see `src/db/index.ts`).
 - **A task's `projectId: number | null`** links it to a project; the inbox groups/filters using that field.
+- **`InboxTaskRow`'s right-click menu is the same shared `buildTaskMenu()`** used by the planner's
+  `TaskCard` and `TimeBlock` — it previously hand-rolled a near-copy, which has been removed. That
+  means it gets the same keyboard nav (arrow keys, flyouts, Home/End, Escape) and the top-level
+  "Mark as done"/"Mark as not done" toggle for free; see [Today](/features/today) for the keyboard
+  details.
+- **`InboxTaskRow.tsx` currently has no production call site** — `InboxProjectsPage` renders
+  `TaskCard` for every row instead. It's a candidate for deletion, left in place for now.
+- **The page is keyboard-navigable via the shared roving-focus panel**, the same primitive used by
+  Settings and the Task Detail Sheet. `CollapsibleSection` headers are a `FocusStop` group
+  (`group="horizontal"`: Left collapses, Right expands), and the `TaskCard`s inside each section
+  are `FocusStop`s too. `CollapsibleSection` moved off native `<details>`/`<summary>` onto a
+  controlled `open` state with `hidden="until-found"` on the collapsed body, specifically to keep
+  Ctrl+F find-in-page working inside a collapsed section while still being roving-nav-addressable;
+  the header toggle is a real `<button>` so Enter/Space stay native.
+- **The Backlog sidebar now renders on this page too**, reusing `uiStore.backlogOpen` — no new
+  state was added for it.
+- Per-row action buttons are reachable via Tab but are not yet in a horizontal roving group —
+  deferred, not yet Left/Right navigable like the rest of the page.
 
 ## Where to start editing
 

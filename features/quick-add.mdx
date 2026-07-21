@@ -35,6 +35,11 @@ Quick Add is the fast-entry modal (opened globally via a keyboard shortcut) wher
   field, and returns focus to it while leaving Quick Add open for the next task. A failed create
   keeps the field and draft intact for retry. `Esc`, Cancel, the close button, and a backdrop
   click still dismiss the modal; `Shift+A` toggles it only when focus is not in a typing target.
+- **Quick Add is the one overlay that skips navigate-first focus.** Every other modal/sheet in
+  Kyrou opens with a highlighted-but-not-editing field (arrow keys to move, Enter to start
+  editing) — Quick Add opens straight into the input with the caret already there, since it's a
+  type-immediately surface and making you press Enter first would defeat the point. The first
+  `Esc` still only steps back to the non-editing state before a second `Esc` closes the modal.
 - Markdown task bodies reuse `parseQuickAdd`, so shared date/time, duration, project, priority,
   tag, and subtask tokens are interpreted the same way when pasting a task list into
   [Today](/features/today)'s Markdown mode.
