@@ -30,6 +30,7 @@ Quick Add is the fast-entry modal (opened globally via a keyboard shortcut) wher
 
 - **`durationExplicit`** on the returned `ParsedTask` distinguishes "user typed a duration" from "defaulted to 30 minutes" — used so the UI doesn't show a duration chip for a default it invented.
 - **Autocomplete is layered on top of parsing, not part of it.** `useTokenAutocomplete` watches the raw input and the caret position to offer project-name completions; `nlpParser.ts` has no knowledge of the project list — it just extracts whatever string follows `#`.
+- **No `#project` token falls back to the default project.** `resolveProjectId()` in `src/db/repositories/projectRepository.ts` assigns a task with no `#name` in its text to whichever project has `isDefault` set (see [Inbox & Projects](/features/inbox-projects)). Typing an explicit `#name` that doesn't match any project still resolves to unassigned (prompting the "Create project" suggestion) rather than falling back to the default.
 - Submitting the modal calls the same task-repository create function used everywhere else (`src/db/repositories/taskRepository.ts`) — Quick Add is purely an input-parsing layer in front of the same data flow described in [Orientation](/orientation).
 - **Successive entry is deliberate.** A successful creation removes the saved draft, clears the
   field, and returns focus to it while leaving Quick Add open for the next task. A failed create

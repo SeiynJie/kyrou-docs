@@ -55,6 +55,13 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
 - **Markdown typeahead is state-driven.** Token suggestions (`@` dates, `#` projects, `!` priorities, `~` durations, `$` statuses) are detected from document state, so they fire on typing, paste, and caret re-entry, and switch when you change trigger. The menu opens at the caret (flips above near the bottom edge, clamps at viewport edges), `Up/Down` select, `Enter`/`Tab` accept, `Escape` dismisses. Hidden lines (filters) collapse via block decorations, so gutter line numbers show honest gaps instead of overlapping.
 - **Markdown Mode has full keyboard navigation.** The toolbar (Save, Copy split-button, Scroll-to-now split-button) and the editor share one roving-focus panel: opening the mode auto-highlights the editor (not Save), `Up`/`Down` walk the toolbar stops, `Enter` on the editor hands focus to CodeMirror, and `Escape` steps back to navigating the toolbar — it never closes the mode (`Shift+C` still cycles modes). Split buttons support `ArrowLeft`/`ArrowRight` between primary action and chevron; both split-button dropdowns use `Enter` (opens with first item highlighted), `ArrowUp`/`ArrowDown` (cycle items), and `Escape` (closes and refocuses chevron).
 - **Markdown uses Quick Add metadata parsing.** Markdown keeps headings, checkbox state, hidden IDs, subtasks, and validation, while each task body delegates token parsing to `parseQuickAdd`. Headingless lines default to Today and may use inline NLP dates; a valid heading controls its tasks' date. If a parsed subtask title matches an existing child uniquely, its date/startTime/duration are preserved on save; renamed or ambiguous replacements fall back to `null` / `30`. Pasted text is parsed live and only persisted after Save confirmation.
+- **Task Detail Sheet footer toggles complete/incomplete, in both directions.** Clicking "Complete Task" on an open task keeps the sheet open and the button flips to "Mark as incomplete" (outline style, undo icon), which calls `uncompleteTask` and also keeps the sheet open — neither direction closes it anymore. Close with Esc or by navigating elsewhere; mirrors the existing `D`-key handler.
+- **Project picker can create a project inline.** The project picker's dropdown has a "Create new project" row; it opens `CreateProjectModal`, and a new ephemeral `onProjectCreated` callback in `uiStore` hands the freshly created project's id back to the picker so it's assigned to the open task immediately.
+- **Planner scroll position persists.** The Today planner mirrors the calendar's rAF-coalesced localStorage pattern (`kairo.planner.today.scrollTop`), restoring the scroll position after the live-query data resolves.
+- **Tasks without a time get their own "Unscheduled" section** at the top of the planner, above Morning/Afternoon/Evening — they used to be mixed into Morning.
+- **Sections and cards collapse, and it sticks.** Each section (Unscheduled/Morning/Afternoon/Evening) has a chevron to collapse/expand; a task card's expanded/collapsed subtask state does too. Both are stored in `uiStore` (`collapsedSectionKeys`, `expandedSubtaskIds`) behind zustand's `persist` middleware, so they survive reloads and stay in sync between Today and Week.
+- **Collapse all / Expand all.** A single dropdown button in the planner header lists Expand all sections, Collapse all sections, Expand all cards, and Collapse all cards; right-clicking empty planner space (not a task card) opens the same four actions in a right-click menu.
+- **Subtasks now render in their parent's project colour.** A subtask chip picks up the same colour tint as its parent task card instead of a flat neutral shade, so a project's colour carries down through its subtasks.
 - **Task detail status/priority use the shared Select.** Status and priority no longer use
   native OS dropdowns; both render the local M3-style `Select` so the surface, menu, focus,
   and nested-popover behavior match the rest of Kyrou. The trigger surface is constant; value
@@ -69,12 +76,42 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
   (`focusedTaskId`, `expandedSubtaskIds`) and the logic is in `usePlannerKeyboardNav.ts`. In
   select mode (see below), `Enter` toggles the focused card's selection instead of opening
   its detail sheet.
-- **`D` toggles done** while the Task Detail Sheet is focused (and you're not typing in its
-  fields).
+- **Up/Down step into expanded subtasks too.** If a task card is expanded, `Up`/`Down` walk
+  through its visible subtask chips before moving to the next card. `Enter` on a subtask opens
+  its own detail sheet (with a `↳ Parent` link back); `Left` on a subtask collapses the parent
+  card and moves focus back onto it; `Right` on a subtask does nothing (a subtask has no
+  children of its own). Reordering with `Ctrl+Shift+Up/Down` still only applies to top-level
+  tasks.
+- **`D` toggles done** on whatever task is currently highlighted — no need to open the detail
+  sheet first. It works in the Today planner, the Week planner and the Calendar, on subtasks as
+  well as top-level tasks, and it is rebindable in Settings → Keyboard. Toggling a subtask
+  updates its parent the same way ticking its checkbox does: a parent whose last child you
+  complete becomes done, and un-ticking a child reopens a done parent. If the Task Detail Sheet
+  is open, `D` toggles that task; in select mode it toggles every selected task at once. It
+  never fires while you're typing, and another dialog on top takes priority.
 - **Context Menu key.** Pressing the physical Context Menu key with a focused task opens that
   card's normal shared menu beside the card, anchored to that card's position (the OS reports no
   cursor coordinates for this key); it is the same event path as a right-click. Task rows carry
-  `tabIndex={0}` so the key can target them at all.
+  `tabIndex={0}` so the key can target them at all. It works on a focused **subtask** too,
+  opening that subtask's own menu. With nothing focused it does nothing — the plain key is
+  strictly the task menu.
+- **`Shift` + Context Menu key** opens the expand/collapse menu instead — the same four actions
+  as right-clicking empty planner space, navigable with the arrow keys and `Enter`. The plain
+  Context Menu key used to open *both* menus at once; it now only ever opens the task's.
+- **Context menu fully captures keyboard while open.** The menu marks itself `data-focus-stop`, so
+  `usePlannerKeyboardNav`'s window-level listener yields to it — Enter/arrow keys no longer leak
+  through to the planner and open the underlying task's detail sheet or move planner focus while
+  a menu is open.
+- **`Shift+N` scrolls to Now**, configurable in Settings → Keyboard, in both Calendar mode and the
+  planner list. In the Today planner it focuses/scrolls to the first task at or after the current
+  time, falling back to whichever of Morning/Afternoon/Evening currently holds "now" if nothing
+  qualifies. In Calendar mode it's the same behavior as clicking the **Now** button, whose hover
+  title shows the hint. See [Week](/features/week) for the planner's column-scrolling variant and
+  [Calendar](/features/calendar) for the calendar's own `Up`/`Down`/`Enter`/`PageUp`/`PageDown`
+  keyboard navigation over scheduled blocks.
+- **Quick Add close hands focus back immediately.** Closing Quick Add no longer leaves a stale
+  focus target behind — arrow-key planner navigation works on the very next keypress instead of
+  needing an extra click first.
 - **Two-mode focus inside modals and the Task Detail Sheet.** These overlays open in **navigate**
   mode — Up/Down/Home/End move a highlight between fields (Left/Right move within the duration
   presets), nothing is being edited yet. Enter drops into **edit** mode and hands real focus to

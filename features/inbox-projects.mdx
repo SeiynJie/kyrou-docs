@@ -40,6 +40,11 @@ The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and projec
   the header toggle is a real `<button>` so Enter/Space stay native.
 - **The Backlog sidebar now renders on this page too**, reusing `uiStore.backlogOpen` — no new
   state was added for it.
+- **A project can be marked "Default project"** — a toggle in `CreateProjectModal` when editing an
+  existing project, backed by `isDefault` on `Project` and `setDefaultProject()` in
+  `projectRepository.ts` (only one project can be default at a time; setting one clears the rest).
+  Quick Add assigns new tasks to the default project when no `#project` token is typed — see
+  [Quick Add](/features/quick-add).
 - Per-row action buttons are reachable via Tab but are not yet in a horizontal roving group —
   deferred, not yet Left/Right navigable like the rest of the page.
 

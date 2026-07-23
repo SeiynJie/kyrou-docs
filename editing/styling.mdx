@@ -45,6 +45,10 @@ export function applyTheme(pref: ThemePref): void {
 
 `resolveTheme` turns a stored preference (`'light' | 'dark' | 'system'`) into an actual `'light' | 'dark'`, and `initThemeSync()` applies it on load and keeps it synced to both the settings store and the OS `prefers-color-scheme` media query. Because component classes reference tokens (`bg-surface`, not a literal hex), the exact same JSX renders correctly in both themes automatically — there is nothing to change per-component when someone switches themes.
 
+## Focus outline
+
+`src/index.css` has a global `:focus-visible` rule (in `@layer base`) that draws every keyboard-focus ring in the `secondary` token, replacing the native white UA outline app-wide — `Button`'s own ring moved from `ring-primary/50` to `ring-secondary` to match. `secondary` is the one focus colour in the app; don't introduce another.
+
 ## Worked example: restyling `Button`
 
 `src/components/ui/Button.tsx` is a good example of the whole pattern in one file:
