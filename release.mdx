@@ -27,16 +27,15 @@ If `npm ci` fails, `package-lock.json` is out of sync with `package.json` — fi
 `package-lock.json` is regenerated only via `npm install` — never hand-edited. Release tags (`v*`) must point at a commit whose lockfile is in sync with `package.json`.
 </Warning>
 
-This is enforced by `.github/workflows/ci.yml`, which runs `npm ci` (Node 22) on every push/PR to `main`. It exists because the v0.1.2 release once failed: the tag pointed at a commit with a hand-edited, out-of-sync lockfile, `npm ci` requires exact sync, and the fix landed on `main` *after* the tag had already been cut — so the tag never saw it. **Only tag a commit that's already on `main` and already green on this check.**
+This is enforced by `.github/workflows/ci.yml`, which runs `npm ci` on Node 24 on every push/PR to `main`. It exists because the v0.1.2 release once failed: the tag pointed at a commit with a hand-edited, out-of-sync lockfile, `npm ci` requires exact sync, and the fix landed on `main` *after* the tag had already been cut — so the tag never saw it. **Only tag a commit that's already on `main` and already green on this check.**
 
 ## Cutting a release
 
-1. Bump the version in **both** places (they should match):
-   - `src-tauri/tauri.conf.json` → `"version"`
-   - `package.json` → `"version"` (if you version it there too)
+1. Bump the release version in `src-tauri/tauri.conf.json` → `"version"`.
+   - `package.json` stays at `0.0.0` in this repo and is **not** part of Kyrou's release versioning.
 2. Commit the version bump:
    ```bash
-   git add src-tauri/tauri.conf.json package.json package-lock.json
+   git add src-tauri/tauri.conf.json
    git commit -m "chore: bump version to v0.1.x"
    git push
    ```
@@ -50,7 +49,7 @@ This is enforced by `.github/workflows/ci.yml`, which runs `npm ci` (Node 22) on
    1. Guards that the tag matches `version` in `src-tauri/tauri.conf.json`, failing the build if they disagree. A mismatch would ship an updater manifest advertising a version the installer never installs, so the app would re-prompt forever.
    2. Runs `tauri-action` in **build-only** mode, producing a **signed** NSIS installer and its `.sig` (signing uses the `TAURI_SIGNING_PRIVATE_KEY` secret, matched against the public key embedded in `src-tauri/tauri.conf.json`).
    3. **Generates `latest.json`** from the built `.exe`, its `.sig`, and the config version. `tauri-action` only emits this manifest when it publishes a release *itself*, which it does not do here — so the workflow builds it.
-   4. `softprops/action-gh-release` publishes the installer, `.sig`, and `latest.json` as a GitHub Release on **`SeiynJie/kyrou-releases`** (public) using the `KYROU_RELEASES_TOKEN` secret — the source repo stays private. `target_commitish` is pinned to that repo's `main`, since the default (this repo's commit SHA) does not exist there and the API rejects it with `400 Invalid target_commitish parameter`.
+   4. `softprops/action-gh-release` publishes the installer, `.sig`, and `latest.json` as a GitHub Release on **`SeiynJie/kyrou-releases`** (public) using the `KYROU_RELEASES_TOKEN` secret — the source repo stays private. `target_commitish` is pinned to that repo's `main`, since the default (this repo's commit SHA) does not exist there and the API rejects it with `400 Invalid target_commitish parameter`. Its `body:` is also manually hardcoded in `.github/workflows/release.yml`, so update that markdown for every release or the GitHub Release will ship stale notes (for example, the current markdown-editor summary).
 
    <Warning>
    Always cut the tag from `main`. The tag decides what gets built, so a tag on a feature branch silently ships a release missing everything on `main`.
