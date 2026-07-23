@@ -15,13 +15,14 @@ Alongside the main panel, a **Backlog sidebar** lists tasks that are overdue or 
 |---|---|
 | `src/features/today/components/TodayPage.tsx` | Orchestrator — picks which of Planner / Calendar / Markdown to render based on `uiStore.todayView`, and shows/hides the backlog sidebar |
 | `src/features/today/components/PlannerView.tsx` | The list-based planner (scheduled + unscheduled sections) |
-| `src/features/today/components/TaskCard.tsx` | A single task row/card — checkbox, title, time, priority indicator |
+| `src/features/today/components/TaskCard.tsx` | A single task row/card — checkbox, title, time, priority indicator. Also renders subtask rows (tasks with `parentId` set), in a compact/indented variant |
 | `src/features/today/components/TaskSection.tsx` | Groups tasks into labeled sections (e.g. "Morning", "Unscheduled") |
 | `src/features/today/components/TaskDetailSheet.tsx` | Bottom sheet / dialog for viewing & editing one task's full detail (notes, subtasks, project, priority, schedule) |
 | `src/components/ui/TimePicker.tsx` | Shared M3 time picker (dial + keyboard-input variants), used by the detail sheet's Scheduled card |
 | `src/features/today/components/BacklogSidebar.tsx` | Sidebar listing overdue/undated tasks, draggable onto the day |
 | `src/components/ui/ContextMenu.tsx` | Shared right-click / long-press menu, driven by a config of menu items (built per-surface in `src/components/ui/contextMenuItems.tsx`); right-click opens the menu via `src/features/shared/useRightClickMenu.ts` |
-| `src/components/ui/TaskCheckbox.tsx` | Shared circle checkbox used for the done toggle and, in select mode, the selection indicator |
+| `src/components/ui/TaskCheckbox.tsx` | Shared circle checkbox used for the done toggle, subtask rows, and select mode |
+| `src/db/repositories/taskRepository.ts` | `useChildTasks(parentId)`, `toggleSubtask`, `promoteSubtask`, `demoteTaskToSubtask`, `setParent` — subtask reads/mutations, alongside the regular task CRUD |
 | `src/lib/hooks/usePlannerKeyboardNav.ts` | Arrow-key navigation plus planner keyboard clipboard and Context Menu-key handling |
 | `src/lib/taskClipboard.ts` | Shared copy/cut paste mutation path for menus and keyboard shortcuts |
 | `src/lib/plannerTaskOrder.ts` | Single source of truth for sorting + morning/afternoon/evening bucketing (shared by Planner, Week column, and keyboard-nav ordering) |
@@ -45,8 +46,11 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
 - **Leaving Markdown mode with unsaved changes** is guarded: `uiStore` tracks a `markdownDirty` flag; `MarkdownLeaveGuard` (mounted globally) intercepts route/view changes and prompts before discarding edits.
 - **Backlog membership is date-based, not status-based.** `getBacklogTasks()` in `taskRepository.ts` returns tasks that are either undated or have a date before today and aren't done — there's no separate "backlog" flag on a task.
 - **Task detail: Status/Priority/Duration/Scheduled live together in one metadata grid.** Scheduled uses the existing M3 `DatePicker` in a portaled, viewport-clamped nested popover; choosing a date commits `YYYY-MM-DD`, and Esc closes the picker before the sheet. End time is editable — changing it adjusts duration (start time never moves); an end at or before start is rejected. Duration text can be temporarily empty while edited, but empty, invalid, or below-minimum blur/Enter values restore the stored duration instead of becoming 30 minutes.
+- **Subtasks are real task rows, not an embedded list.** A subtask is a `tasks` table row with `parentId` set to its parent's id. It renders through the exact same `TaskCard` as a top-level task (an indented/compact variant), so it gets the full right-click context menu, natural-language date parsing on create and rename (e.g. typing "call mom tomorrow 3pm" as a subtask title), keyboard navigation, and drag/resize for free — there is no separate subtask component. Only one nesting level is allowed. `Turn into task` promotes a subtask to standalone; demoting a task back into a subtask uses the parent picker and blocks self-parenting or demoting a task that already has children of its own.
+- **Subtasks schedule independently of the parent.** A subtask carries its own `date`/`startTime`/`duration`. A subtask with both date + time **graduates out** of the parent's nested checklist and renders as its own block in the Today list (bucketed by start time, keeping the `↳ parent` hint and the parent's project color) — the done/total count still spans all subtasks. Unscheduled subtasks stay nested and also appear as draggable chips in the calendar's unscheduled header row (own date, else parent's date, else today). If every subtask is scheduled, the parent card shows no expand toggle at all — it looks like a normal task. Scheduling a subtask by typing a time inline auto-fills a missing date (own > parent > today), so it always lands on a visible day.
+- **Completion cascades both ways.** Marking a parent done marks every subtask done; toggling any subtask recomputes the parent (all subtasks done marks the parent done; reopening any subtask reopens the parent). Deleting a parent deletes its subtasks too.
 - **Task clipboard and active date.** Shared task menus and `Ctrl+C`/`Ctrl+X`/`Ctrl+V` copy, cut, and paste focused or selected tasks. Copy duplicates to the active date; cut moves while preserving status and clears only after success. Paste uses an ephemeral active date shared by Planner and Calendar (Today always targets today). Failed pastes retain the clipboard for retry.
-- **Markdown uses Quick Add metadata parsing.** Markdown keeps headings, checkbox state, hidden IDs, subtasks, and validation, while each task body delegates token parsing to `parseQuickAdd`. Headingless lines default to Today and may use inline NLP dates; a valid heading controls its tasks' date. Pasted text is parsed live and only persisted after Save confirmation.
+- **Markdown uses Quick Add metadata parsing.** Markdown keeps headings, checkbox state, hidden IDs, subtasks, and validation, while each task body delegates token parsing to `parseQuickAdd`. Headingless lines default to Today and may use inline NLP dates; a valid heading controls its tasks' date. If a parsed subtask title matches an existing child uniquely, its date/startTime/duration are preserved on save; renamed or ambiguous replacements fall back to `null` / `30`. Pasted text is parsed live and only persisted after Save confirmation.
 - **Task detail status/priority use the shared Select.** Status and priority no longer use
   native OS dropdowns; both render the local M3-style `Select` so the surface, menu, focus,
   and nested-popover behavior match the rest of Kyrou. The trigger surface is constant; value
@@ -89,7 +93,7 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
   ring-secondary` + shadow + a small upward translate) so selection is visible at a glance —
   the checkbox itself still toggles done, unchanged. Turning select mode off clears the
   selection. This replaces the old right-click-drag multi-select. Selection is task-level;
-  subtask-level selection is a deferred follow-up (subtasks are embedded, not separate rows).
+  subtask-level selection is a deferred follow-up.
 - **Dismissal.** All modals, the detail sheet, sidebars, and popovers are coordinated by a
   central overlay layer: opening a modal closes others, and `Esc` closes the topmost overlay
   first — so a picker popover inside the Task Detail Sheet closes on the first `Esc`, and the

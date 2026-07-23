@@ -26,7 +26,7 @@ Quick Add is the fast-entry modal (opened globally via a keyboard shortcut) wher
 | `#name` | project | `#phoenix` |
 | `$status` | status (`todo`, `doing`, etc. map to `TaskStatus`) | `$doing` |
 | `p1`/`p2`/`p3`/`high`/`med`/`low` style tokens | priority | `!high` (see `nlpParser.ts` for exact grammar) |
-| `-- subtask text` | one or more subtasks, everything after `--` | `Plan trip -- book flights -- pack` |
+| `-- a / b / c` | subtasks: everything after `--`, split on `/` (commas are literal text) | `Plan trip -- book flights / pack` |
 
 - **`durationExplicit`** on the returned `ParsedTask` distinguishes "user typed a duration" from "defaulted to 30 minutes" — used so the UI doesn't show a duration chip for a default it invented.
 - **Autocomplete is layered on top of parsing, not part of it.** `useTokenAutocomplete` watches the raw input and the caret position to offer project-name completions; `nlpParser.ts` has no knowledge of the project list — it just extracts whatever string follows `#`.

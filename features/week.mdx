@@ -21,9 +21,12 @@ Calendar mode within Week reuses `src/features/calendar/UnifiedCalendar.tsx` wit
 ## Key concepts / how it connects
 
 - **Reuses Today's building blocks where possible.** Week's planner columns are conceptually the same task cards/sections as Today's `PlannerView`, just tiled across 7 dates instead of 1.
+- **Reuses Today's subtask surface too.** Week planner columns render subtasks through the same `TaskCard` as Today, so context-menu actions, click/Enter editing, and the promote/demote actions all stay identical across both pages.
 - **Data comes from `useTasksForRange(startDate, endDate)`** in `src/db/repositories/taskRepository.ts`, which returns a flat array of tasks across the visible date range; the Week components bucket that array by date client-side.
 - **View-switching (`Shift+V`)** cycles between `/today`, `/week`, and `/inbox` — wired in `GlobalShortcuts` in `src/App.tsx`.
 - **Select mode & keyboard nav.** The planner-header `checklist` toggle (or `Shift+M`) turns on multi-select here too. Keyboard task navigation is per-column: `Up`/`Down` move within the active column (auto-scrolling), and `Alt+Left` / `Alt+Right` move between columns, landing on the same row (clamped to the target column's length) and scrolling it into view — extending the loaded date window if you step past its edge. Those keys, and any click or right-click in a column, update the shared active date. `Tab` is intentionally left alone for native browser focus order; it is not repurposed for column navigation. `Ctrl+C`/`Ctrl+X`/`Ctrl+V` and the task-menu Cut/Copy/Paste rows use that active week-column date; copy duplicates and cut preserves status when moving. See [Today → Keyboard navigation & select mode](/features/today) for the rest of the shared behavior.
+- **Week calendar blocks stay independent.** Since a scheduled subtask is a real task row, the shared calendar view renders it as its own block (`↳ title`) alongside its parent — moving/resizing one never touches the other.
+- **Scheduled subtasks are blocks in the week planner list too.** `WeekPlannerView` buckets every dated task with `parentId` set into its day column same as any task, so a scheduled subtask shows as its own block. Dropping a subtask onto a day column sets its date (preserving its own start time) via the ordinary task-update path.
 
 ## Where to start editing
 
