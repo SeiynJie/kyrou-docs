@@ -71,6 +71,20 @@ Concretely: `src/db/repositories/taskRepository.ts` exports plain async function
 
 Zustand (`src/stores/uiStore.ts`, `src/stores/settingsStore.ts`) is for the *other* kind of state — things that aren't domain data: which modal is open, which task is selected, which view tab is active, unsaved-markdown tracking, keyboard-shortcut bindings. If it should survive a page reload and represents "your data," it belongs in Dexie. If it's transient UI state, it belongs in a store.
 
+## Active roadmap direction
+
+The post-v0.1 roadmap keeps Kyrou local-first. Accounts, Supabase, Stripe, Android overlays, and Android widgets are planned work, not current shipped behavior.
+
+- Kyrou stays account-free by default; local-only use remains permanent.
+- Planned Sync entry points live in the shell: desktop sidebar and mobile top app bar. **Settings → Sync** manages the account and sync state after discovery.
+- OAuth starts only after the user chooses Sync and presses **Continue with Google**. Native OAuth uses the system browser, not an embedded WebView.
+- Planned sync remains Dexie-first: local writes update IndexedDB immediately, then a durable outbox and merge layer converge with Supabase later.
+- Planned Sync status has one shared source for desktop sidebar, mobile top app bar, Settings -> Sync, and Sync Center.
+- Signing out keeps local rows usable, quarantines pending sync data to the origin account, and never auto-attaches that data to a different account.
+- The required thin slice is 3-5 days: responsive/platform gates, Sync shells, Supabase/Google/RLS, Dexie-first push/pull/merge, then WebdriverIO/Appium/release verification.
+- Free local planning and basic task/project sync remain free. Stripe entitlements are planned only for later paid features, and paid account deletion must cancel/reconcile Stripe before profile data is purged.
+- PC/Android overlay/reminder work and Android widgets are future platform batches. iOS is deferred to feasibility work and is not part of the current release pipeline.
+
 ## Dates and times are strings, never `Date`
 
 Persisted fields use plain strings:

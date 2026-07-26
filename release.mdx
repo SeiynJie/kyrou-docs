@@ -31,6 +31,8 @@ This is enforced by `.github/workflows/ci.yml`, which runs `npm ci` on Node 24 o
 
 ## Cutting a release
 
+These steps describe the current Windows desktop release pipeline. Planned Android release work belongs to `docs/roadmap/10-android-pc-distribution.md`; it must be documented as planned until an Android artifact is actually built, signed, and verified.
+
 1. Rewrite `RELEASE_NOTES.md` for this release — it becomes the public GitHub Release body verbatim, so write it for users: what changed, why it was wrong before, and what's still rough. Also bump the release version in `src-tauri/tauri.conf.json` → `"version"`.
    - `package.json` stays at `0.0.0` in this repo and is **not** part of Kyrou's release versioning.
    - `src-tauri/Cargo.toml` has drifted and is not used for release versioning either; the version guard and `latest.json` read `tauri.conf.json` only.
@@ -57,6 +59,12 @@ This is enforced by `.github/workflows/ci.yml`, which runs `npm ci` on Node 24 o
    </Warning>
 6. The in-app updater (`src/features/settings/lib/updater.ts`) picks up the new release automatically — it polls `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`, which the release workflow just published to.
 7. A `publish-docs` job (`needs: release`) also runs, invoking `.github/workflows/docs-publish.yml` via `workflow_call` — so cutting a release also mirrors the current `docs-site/` into `kyrou-docs` and refreshes the live Mintlify site, in addition to the normal on-push trigger. See [Deploy](/deploy) for the mirror mechanics.
+
+## Planned Android/PC release direction
+
+The roadmap adds Android and broader PC distribution after responsive accessibility work. That future work must preserve the current Windows NSIS installer/updater path while adding Android build/signing checks, platform gates for native APIs, and release notes that distinguish Windows, PC, Android, and shared artifacts.
+
+Do not describe CI as already building Android until the Android job exists and a signed/dry-run artifact has been verified. iOS release work is deferred to Batch 20 and is not part of the current Windows pipeline.
 
 ## After a release
 

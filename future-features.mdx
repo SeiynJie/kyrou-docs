@@ -1,29 +1,44 @@
 ---
 title: Future Features
-description: Kyrou's roadmap, batched from a real usage log and ordered so later batches depend on earlier ones.
+description: Kyrou's active post-v0.1 roadmap, ordered so later batches depend on earlier foundations.
 ---
 
-Kyrou's roadmap for v0.1.2 is compiled from a real usage log (`Kairo Desktop Usage - Actual Experience - v0.1.1 - Log Export`) and lives in **`docs/roadmap/`** — treat that folder as the source of truth; this page is a scannable summary.
+Kyrou's active post-v0.1 roadmap lives in **`docs/roadmap/`**. Treat that folder as the source of truth; this page is only a scannable public summary. Current shipped Kyrou remains local-first and account-free by default.
 
-The batches are ordered deliberately (work them in numeric order — later batches depend on earlier ones):
+The batches are ordered deliberately (work them in numeric order; later batches depend on earlier ones):
 
 | # | File | Theme | Why this order |
 |---|---|---|---|
-| 1 | `docs/roadmap/1-settings-and-auto-update.md` | Settings screen + in-app updates | Declared #1 priority — shipping fixes was blocked on manual GitHub downloads |
-| 2 | `docs/roadmap/2-critical-bugfixes.md` | Data-loss & wrong-scheduling bugs | Losing typed tasks or wrong scheduling erodes trust in daily use |
-| 3 | `docs/roadmap/3-context-menu-refactor.md` | Unified context-menu system | Mentioned in 6+ places in the log — one refactor unlocks all of them |
-| 4 | `docs/roadmap/4-keyboard-nav-and-focus.md` | Focus management + mouseless nav | Second most-repeated theme; Esc/focus rules touch every modal |
-| 5 | `docs/roadmap/5-subtasks-rework.md` | Subtasks as real task rows | Depends on #3; superseded its own first pass — subtasks are now `parentId` rows, not embedded cards |
-| 6 | `docs/roadmap/6-markdown-editor.md` | Typeahead, task-ID hiding, copy | Isolated to markdown view; self-contained fixes |
-| 7 | `docs/roadmap/7-planner-calendar-polish.md` | View persistence, buttons, spacing | Nice-to-haves, mostly reuse of existing logic |
-| 8 | `docs/roadmap/8-dev-infrastructure.md` | Logging, app dashboard, bug intake | Non-app work; can run in parallel anytime |
+| 9 | `docs/roadmap/9-responsive-accessibility.md` | Responsive accessibility | Stabilize the existing app from phone widths through desktop before platform work |
+| 10 | `docs/roadmap/10-android-pc-distribution.md` | Android + PC distribution | Add Android build/signing paths while preserving the current Windows NSIS pipeline |
+| 11 | `docs/roadmap/11-optional-accounts-supabase.md` | Optional accounts + Sync Center | Add shell-level Sync discovery, Continue with Google, Settings → Sync, and Supabase/RLS foundations without requiring sign-in |
+| 12 | `docs/roadmap/12-local-first-two-way-sync.md` | Dexie-first sync engine | Add outbox, pull, merge, tombstones, retries, and visible conflicts after account foundations exist |
+| 13 | `docs/roadmap/13-cross-platform-automation.md` | Automation matrix | Cover account-free, sync, device, and release journeys with WebdriverIO, Appium, and local Supabase checks |
+| 14 | `docs/roadmap/14-entitlements-stripe-billing.md` | Stripe entitlements | Add paid entitlements after free local planning and basic task/project sync are protected |
+| 15 | `docs/roadmap/15-planning-recurrence-rituals.md` | Recurrence + planning rituals | Extend planning primitives after the data/sync foundation is stable |
+| 16 | `docs/roadmap/16-focus-time-tracking.md` | Focus + actual time | Track focus sessions without confusing estimates, scheduled time, and actual time |
+| 17 | `docs/roadmap/17-guided-routines.md` | Guided routines | Add one-step-at-a-time routines with accessible controls |
+| 18 | `docs/roadmap/18-system-task-overlay.md` | System overlay/reminders | Explore PC/Android schedule-first/manual-focus overlay surfaces with permission fallback |
+| 19 | `docs/roadmap/19-android-home-screen-widgets.md` | Android widgets | Add Today, Pomodoro/focus, and compact Quick Add widgets that still work offline/account-free |
+| 20 | `docs/roadmap/20-ios-follow-up.md` | iOS follow-up | Defer iOS distribution, widgets, and Live Activities until Android/PC lessons are proven |
+
+## Roadmap invariants
+
+- **Local-only remains permanent.** Kyrou works without an account today, and optional accounts must not turn local planning into a trial.
+- **Sync is optional and explicit.** Desktop discovers Sync from the sidebar; mobile discovers it from the top app bar. **Settings → Sync** manages it, but first-time OAuth starts only after **Continue with Google**.
+- **Native OAuth stays out of WebViews.** Planned Google sign-in uses the external system browser with PKCE-S256, callback validation, and platform secure storage.
+- **Sign-out does not cross-contaminate accounts.** Local rows stay usable, pending sync data is quarantined to the origin account, and a different account requires an explicit keep/export/remove/re-home choice.
+- **The thin slice is 3-5 days.** The planned vertical slice is responsive shell + Android build path + Sync entry shells, then Supabase/Google/RLS, then Dexie-first push/pull/merge, then automation/release checks.
+- **Free core sync stays free.** Free local planning and basic task/project sync are not Stripe-gated.
+- **Paid deletion resolves billing first.** Stripe subscriptions/customers must be cancelled or unlinked and reconciled before profile/domain rows are purged.
+- **Overlay/widgets are future platform work.** PC/Android overlay/reminder work and Android widgets come after sync and platform foundations. They are not shipped in current Kyrou.
+- **iOS is deferred.** Batch 20 is research/feasibility; no current release builds iOS or promises arbitrary iOS system overlays.
 
 ## Cross-cutting notes
 
-- **The context-menu refactor (#3) is the biggest batch.** Items from Backlog, Today Planner, Calendar, Quick Add, Subtasks, and Unscheduled chips all funnel into it — do it before #5 (Subtasks), which consumes the context-menu entries it defines.
-- **Batch 5 shipped twice.** The first pass (embedded `Task.subtasks` array + a projection layer to fake calendar blocks) is superseded by a second pass that makes subtasks real `tasks` rows with `parentId`, so they inherit context menu, NLP parsing, and keyboard nav instead of reimplementing them. `docs/roadmap/5-subtasks-rework.md` records both.
-- **Keyboard nav's "single modal open" rule (#4)** must be respected by the Settings modal built in #1 — if #1 ships first, #4 needs to retrofit that rule onto it.
-- **Rename**: Kairo -> Kyrou. Done — the app and docs now use the Kyrou name (repo slug and internal identifiers like `KairoDB` are unchanged for now).
-- **Tooling reminder** (outside the app roadmap): create dedicated subagent instruction files (code/review/security/testing/notion/graphify/docs) for Claude Code and other CLIs.
+- Batches 1-8 are completed and archived under `docs/roadmap/archive/`; the active roadmap starts at Batch 9.
+- Dexie remains the immediate source of truth even after planned Supabase sync. UI should keep reading local repositories rather than remote tables directly.
+- Basic task/project sync is planned as free core behavior. Stripe entitlements should only unlock later paid-only features.
+- Android/PC ship before iOS. iOS distribution, widgets, and Live Activities need a separate feasibility decision in Batch 20.
 
-For exact task-level detail, open the numbered file for the batch you're working on in `docs/roadmap/`.
+For exact task-level detail, open the numbered file for the active batch in `docs/roadmap/`.
