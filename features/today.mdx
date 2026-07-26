@@ -54,11 +54,17 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
 - **Markdown Copy button + Ctrl+C.** An M3 split-button copies the document in the format its label shows — "Copy · Plain text" (titles only), "With details" (full metadata), or "JSON" (structured, no internal ids) — with the caret menu switching the persisted format. Copy respects the active Hide checked / Today only filters: what you see is what you copy. `Ctrl+C`/`Ctrl+X` inside the editor strip `^id` markers from the selection; no copy path ever emits task ids.
 - **Markdown typeahead is state-driven.** Token suggestions (`@` dates, `#` projects, `!` priorities, `~` durations, `$` statuses) are detected from document state, so they fire on typing, paste, and caret re-entry, and switch when you change trigger. The menu opens at the caret (flips above near the bottom edge, clamps at viewport edges), `Up/Down` select, `Enter`/`Tab` accept, `Escape` dismisses. Hidden lines (filters) collapse via block decorations, so gutter line numbers show honest gaps instead of overlapping.
 - **Markdown Mode has full keyboard navigation.** The toolbar (Save, Copy split-button, Scroll-to-now split-button) and the editor share one roving-focus panel: opening the mode auto-highlights the editor (not Save), `Up`/`Down` walk the toolbar stops, `Enter` on the editor hands focus to CodeMirror, and `Escape` steps back to navigating the toolbar — it never closes the mode (`Shift+C` still cycles modes). Split buttons support `ArrowLeft`/`ArrowRight` between primary action and chevron; both split-button dropdowns use `Enter` (opens with first item highlighted), `ArrowUp`/`ArrowDown` (cycle items), and `Escape` (closes and refocuses chevron).
-- **Markdown uses Quick Add metadata parsing.** Markdown keeps headings, checkbox state, hidden IDs, subtasks, and validation, while each task body delegates token parsing to `parseQuickAdd`. Headingless lines default to Today and may use inline NLP dates; a valid heading controls its tasks' date. If a parsed subtask title matches an existing child uniquely, its date/startTime/duration are preserved on save; renamed or ambiguous replacements fall back to `null` / `30`. Pasted text is parsed live and only persisted after Save confirmation.
+- **Markdown uses Quick Add metadata parsing.** Markdown keeps headings, checkbox state, hidden IDs, subtasks, and validation, while each task body delegates token parsing to `parseQuickAdd`. Headingless lines default to Today and may use inline NLP dates; a valid heading controls its tasks' date. Subtasks now appear indented under their parent in the markdown itself — keeping their own time, priority, duration, and project — instead of only unscheduled ones nesting while scheduled ones flattened out to a bare line. Matching back to the right subtask on save is now id-based, not title-based, so a renamed subtask reconciles correctly. Pasted text is parsed live and only persisted after Save confirmation.
 - **Task Detail Sheet footer toggles complete/incomplete, in both directions.** Clicking "Complete Task" on an open task keeps the sheet open and the button flips to "Mark as incomplete" (outline style, undo icon), which calls `uncompleteTask` and also keeps the sheet open — neither direction closes it anymore. Close with Esc or by navigating elsewhere; mirrors the existing `D`-key handler.
 - **Project picker can create a project inline.** The project picker's dropdown has a "Create new project" row; it opens `CreateProjectModal`, and a new ephemeral `onProjectCreated` callback in `uiStore` hands the freshly created project's id back to the picker so it's assigned to the open task immediately.
 - **Planner scroll position persists.** The Today planner mirrors the calendar's rAF-coalesced localStorage pattern (`kairo.planner.today.scrollTop`), restoring the scroll position after the live-query data resolves.
 - **Tasks without a time get their own "Unscheduled" section** at the top of the planner, above Morning/Afternoon/Evening — they used to be mixed into Morning.
+- **Priority no longer tints an unscheduled task's title text.** Its title now always reads in the
+  standard text colour. On a card with no project colour, priority is still visible via the card's
+  background tint and left border — there is no separate priority pill on this surface, that
+  tint/border was always the signal, it just used to also duplicate onto the title text. On a card
+  that *does* have a project colour, the project's inline tint and left border already overrode
+  both, so priority now has no visual signal on those cards at all.
 - **Sections and cards collapse, and it sticks.** Each section (Unscheduled/Morning/Afternoon/Evening) has a chevron to collapse/expand; a task card's expanded/collapsed subtask state does too. Both are stored in `uiStore` (`collapsedSectionKeys`, `expandedSubtaskIds`) behind zustand's `persist` middleware, so they survive reloads and stay in sync between Today and Week.
 - **Collapse all / Expand all.** A single dropdown button in the planner header lists Expand all sections, Collapse all sections, Expand all cards, and Collapse all cards; right-clicking empty planner space (not a task card) opens the same four actions in a right-click menu.
 - **Subtasks now render in their parent's project colour.** A subtask chip picks up the same colour tint as its parent task card instead of a flat neutral shade, so a project's colour carries down through its subtasks.
@@ -109,6 +115,9 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
   title shows the hint. See [Week](/features/week) for the planner's column-scrolling variant and
   [Calendar](/features/calendar) for the calendar's own `Up`/`Down`/`Enter`/`PageUp`/`PageDown`
   keyboard navigation over scheduled blocks.
+  Because it sets focus, not just scroll position, `Up`/`Down`/`Enter` keep working immediately
+  after — they continue from the task `Shift+N` landed on instead of wherever focus happened to
+  be before.
 - **Quick Add close hands focus back immediately.** Closing Quick Add no longer leaves a stale
   focus target behind — arrow-key planner navigation works on the very next keypress instead of
   needing an extra click first.
@@ -121,6 +130,9 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
   until you press Enter on it. The Backlog sidebar gets the same Up/Down navigation but is
   deliberately not Tab-trapped, since it's meant to coexist with the rest of the page rather than
   behave like a modal.
+- **Backlog sidebar has the same keyboard shortcuts as a task card.** `D` marks the highlighted
+  backlog task done/not done, `Enter` opens it in the detail sheet, and the Context Menu key
+  opens that task's own menu — instead of the browser's native right-click menu.
 - **Task menu keyboard nav.** The right-click/Context-Menu-key menu follows the standard menu
   keyboard pattern: Up/Down move the highlight, Right opens a flyout (Left closes it), Home/End
   jump to the ends, Escape closes an open flyout before the whole menu. Every task menu now leads
