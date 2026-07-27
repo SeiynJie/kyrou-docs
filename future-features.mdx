@@ -9,7 +9,6 @@ The batches are ordered deliberately (work them in numeric order; later batches 
 
 | # | File | Theme | Why this order |
 |---|---|---|---|
-| 9 | `docs/roadmap/9-responsive-accessibility.md` | Responsive accessibility | Stabilize the existing app from phone widths through desktop before platform work |
 | 10 | `docs/roadmap/10-android-pc-distribution.md` | Android + PC distribution | Add Android build/signing paths while preserving the current Windows NSIS pipeline |
 | 11 | `docs/roadmap/11-optional-accounts-supabase.md` | Optional accounts + Sync Center | Add shell-level Sync discovery, Continue with Google, Settings → Sync, and Supabase/RLS foundations without requiring sign-in |
 | 12 | `docs/roadmap/12-local-first-two-way-sync.md` | Dexie-first sync engine | Add outbox, pull, merge, tombstones, retries, and visible conflicts after account foundations exist |
@@ -36,7 +35,11 @@ The batches are ordered deliberately (work them in numeric order; later batches 
 
 ## Cross-cutting notes
 
-- Batches 1-8 are completed and archived under `docs/roadmap/archive/`; the active roadmap starts at Batch 9.
+- Batches 1-8 are completed and archived under `docs/roadmap/archive/`. Batch 9 (responsive
+  accessibility) has also shipped its code and documentation — see
+  `docs/roadmap/9-responsive-accessibility.md` for status detail, including the manual
+  on-device/viewport verification pass that is still outstanding. The active upcoming roadmap
+  starts at Batch 10.
 - Dexie remains the immediate source of truth even after planned Supabase sync. UI should keep reading local repositories rather than remote tables directly.
 - Basic task/project sync is planned as free core behavior. Stripe entitlements should only unlock later paid-only features.
 - Android/PC ship before iOS. iOS distribution, widgets, and Live Activities need a separate feasibility decision in Batch 20.

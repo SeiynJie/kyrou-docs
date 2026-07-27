@@ -49,6 +49,31 @@ export function applyTheme(pref: ThemePref): void {
 
 `src/index.css` has a global `:focus-visible` rule (in `@layer base`) that draws every keyboard-focus ring in the `secondary` token, replacing the native white UA outline app-wide — `Button`'s own ring moved from `ring-primary/50` to `ring-secondary` to match. `secondary` is the one focus colour in the app; don't introduce another.
 
+## Responsive utilities
+
+768px (Tailwind's `md`) is the one mobile/desktop boundary in the app. On the CSS side that's
+just `md:` variants; on the JS side, the only place that reads it is `useIsMobile()`
+(`src/lib/hooks/useMediaQuery.ts`) — don't hardcode `768` in a component.
+
+- **`.touch-target`** (`src/index.css`) expands a control's hit area to roughly 48x48px via an
+  `::after` pseudo-element, scoped to `@media (pointer: coarse)` only, so it changes nothing on
+  desktop mouse/trackpad layout. Add it to small or icon-only touch controls (nav tabs, FAB,
+  close buttons).
+- **Never redefine `sr-only` / `not-sr-only`.** Tailwind already ships both as layered utilities.
+  Redefining `.sr-only` unlayered in `src/index.css` would outrank Tailwind's layer and silently
+  break `md:not-sr-only` (content meant to reveal at desktop would stay hidden everywhere).
+- **Text scaling:** containers wrapping user-visible text use `min-h-*` rather than a fixed `h-*`,
+  so an enlarged system/browser font grows the box instead of clipping the label. This does not
+  apply to deliberately-shaped elements — icon-only square buttons, the FAB, avatars, checkboxes
+  — those stay fixed-size by design.
+- **Reduced motion:** a single global `@media (prefers-reduced-motion: reduce)` block in
+  `src/index.css` handles it app-wide; don't add per-component reduced-motion checks.
+- **Sheet vs. dialog:** `Modal`, `QuickAddModal`, and `TaskDetailSheet` all render as a bottom
+  sheet below `md` and a centered dialog at `md+`, sharing one class contract from
+  `src/lib/sheetPresentation.ts` instead of each re-deriving the shape.
+
+Full rule set and rationale: `DESIGN.md` → "Responsive & Touch".
+
 ## Worked example: restyling `Button`
 
 `src/components/ui/Button.tsx` is a good example of the whole pattern in one file:

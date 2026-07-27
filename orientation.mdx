@@ -48,6 +48,28 @@ Routes (all wrapped in `AppLayout`, from `src/components/layout/AppLayout.tsx`):
 
 A handful of things are mounted once at the App root, outside any route, because they're global overlays that can pop up from anywhere: `QuickAddModal`, `TaskDetailSheet`, `SettingsModal`, `CreateProjectModal`, `MarkdownLeaveGuard`, and `ToastContainer` (react-toastify). A `GlobalShortcuts` component (also defined in `App.tsx`) wires up keyboard shortcuts via `useKeyboardShortcuts` (`src/lib/hooks/`) — things like opening Quick Add, toggling the backlog, cycling Planner/Calendar/Markdown mode, and cycling Today/Week/Inbox views.
 
+## Mobile vs. desktop shell
+
+One responsive tree covers both, gated by a single JS breakpoint: `useIsMobile()`
+(`src/lib/hooks/useMediaQuery.ts`) wraps `useMediaQuery('(min-width: 768px)')` and is the only
+place that reads the mobile/desktop boundary — components never hardcode `768`. Below `md`:
+bottom nav (`BottomNav`) plus bottom sheets. At `md+`: a left sidebar (`Sidebar`) plus centered
+dialogs. `Modal`, `QuickAddModal`, and `TaskDetailSheet` share one sheet-on-mobile /
+dialog-on-desktop class contract from `src/lib/sheetPresentation.ts` rather than each re-deriving
+the shape. One documented exception: the planner/calendar time axis (`WeekColumn`,
+`UnifiedCalendar` week mode) scrolls horizontally instead of reflowing, since reflowing a time
+grid would break its temporal meaning.
+
+### Testing on a real phone
+
+`npm run dev:mobile` runs `vite --host` and prints a `Network:` URL you can open on a phone on
+the same Wi-Fi, with HMR still working over LAN. Windows Firewall will prompt on first run — allow
+it on **Private** networks. Plain `http://` is fine since IndexedDB needs no secure context.
+Tauri-only APIs (updater, tray, autostart, global shortcuts) are simply absent in a browser tab —
+irrelevant unless you're testing something outside the responsive UI itself. Note that Expo does
+not apply here: Kyrou is React DOM inside Tauri v2, not React Native, so Expo Go can't load it —
+the Android path is Tauri Android.
+
 ## The golden data-flow rule
 
 There is exactly one path data takes, and components are not allowed to shortcut it:
