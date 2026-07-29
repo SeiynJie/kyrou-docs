@@ -108,6 +108,12 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
   `usePlannerKeyboardNav`'s window-level listener yields to it — Enter/arrow keys no longer leak
   through to the planner and open the underlying task's detail sheet or move planner focus while
   a menu is open.
+- **Touch swipe quick actions.** On touch devices, swiping a task right-to-left opens the same
+  shared context menu regardless of done state. Swiping left-to-right on an open task previews the
+  secondary token before completing it; swiping left-to-right on an already-done task uses the
+  full-opacity `success`/`success-container` treatment before restoring it to not-done. This is
+  intentionally only a quick-action layer; desktop HTML5 drag/click is unchanged and remains the
+  reorder/schedule path until full touch DnD gets its own pass.
 - **`Shift+N` scrolls to Now**, configurable in Settings → Keyboard, in both Calendar mode and the
   planner list. In the Today planner it focuses/scrolls to the first task at or after the current
   time, falling back to whichever of Morning/Afternoon/Evening currently holds "now" if nothing

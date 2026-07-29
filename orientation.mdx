@@ -54,9 +54,11 @@ One responsive tree covers both, gated by a single JS breakpoint: `useIsMobile()
 (`src/lib/hooks/useMediaQuery.ts`) wraps `useMediaQuery('(min-width: 768px)')` and is the only
 place that reads the mobile/desktop boundary — components never hardcode `768`. Below `md`:
 bottom nav (`BottomNav`) plus bottom sheets. At `md+`: a left sidebar (`Sidebar`) plus centered
-dialogs. `Modal`, `QuickAddModal`, and `TaskDetailSheet` share one sheet-on-mobile /
-dialog-on-desktop class contract from `src/lib/sheetPresentation.ts` rather than each re-deriving
-the shape. One documented exception: the planner/calendar time axis (`WeekColumn`,
+dialogs. `Modal` and `QuickAddModal` share one sheet-on-mobile / dialog-on-desktop class contract
+from `src/lib/sheetPresentation.ts` rather than each re-deriving the shape, and `BacklogSidebar`
+reuses its backdrop. `TaskDetailSheet` is a bottom sheet below `md` too, but keeps its own classes
+because its desktop form is a right-edge drawer instead of a centered dialog. One documented
+exception: the planner/calendar time axis (`WeekColumn`,
 `UnifiedCalendar` week mode) scrolls horizontally instead of reflowing, since reflowing a time
 grid would break its temporal meaning.
 

@@ -55,10 +55,12 @@ export function applyTheme(pref: ThemePref): void {
 just `md:` variants; on the JS side, the only place that reads it is `useIsMobile()`
 (`src/lib/hooks/useMediaQuery.ts`) — don't hardcode `768` in a component.
 
-- **`.touch-target`** (`src/index.css`) expands a control's hit area to roughly 48x48px via an
-  `::after` pseudo-element, scoped to `@media (pointer: coarse)` only, so it changes nothing on
-  desktop mouse/trackpad layout. Add it to small or icon-only touch controls (nav tabs, FAB,
-  close buttons).
+- **`.touch-target-sm` / `.touch-target-md`** (`src/index.css`) expand a control's hit area
+  toward roughly 48px via real padding on the control's own box (not an overhanging
+  pseudo-element, which could paint over a tightly-spaced neighbour), scoped to
+  `@media (pointer: coarse)` only, so it changes nothing on desktop mouse/trackpad layout. Add it
+  to small or icon-only touch controls (nav tabs, close buttons); a control already ≥48px on its
+  own (the FAB) doesn't need it.
 - **Never redefine `sr-only` / `not-sr-only`.** Tailwind already ships both as layered utilities.
   Redefining `.sr-only` unlayered in `src/index.css` would outrank Tailwind's layer and silently
   break `md:not-sr-only` (content meant to reveal at desktop would stay hidden everywhere).
@@ -68,9 +70,15 @@ just `md:` variants; on the JS side, the only place that reads it is `useIsMobil
   — those stay fixed-size by design.
 - **Reduced motion:** a single global `@media (prefers-reduced-motion: reduce)` block in
   `src/index.css` handles it app-wide; don't add per-component reduced-motion checks.
-- **Sheet vs. dialog:** `Modal`, `QuickAddModal`, and `TaskDetailSheet` all render as a bottom
-  sheet below `md` and a centered dialog at `md+`, sharing one class contract from
-  `src/lib/sheetPresentation.ts` instead of each re-deriving the shape.
+- **Sheet vs. dialog:** `Modal` and `QuickAddModal` render as a bottom sheet below `md` and a
+  centered dialog at `md+`, sharing one class contract from `src/lib/sheetPresentation.ts` instead
+  of each re-deriving the shape (`BacklogSidebar` reuses its backdrop). `TaskDetailSheet` is also
+  a bottom sheet below `md`, but keeps its own classes because at `md+` it slides in from the
+  right edge rather than centering — don't try to force it onto `SHEET_WRAPPER`/`SHEET_PANEL`.
+
+- **Semantic success tokens:** `success`, `success-container`, and `on-success-container` exist
+  alongside the other semantic tokens (`error`/`error-container`) in both the default dark theme
+  and the `[data-theme="light"]` override, for positive confirmation states (e.g. 'swipe-to-restore preview for an already-done task') — use them instead of a one-off green.
 
 Full rule set and rationale: `DESIGN.md` → "Responsive & Touch".
 
