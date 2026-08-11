@@ -1,47 +1,32 @@
 ---
 title: Future Features
-description: Kyrou's active post-v0.1 roadmap, ordered so later batches depend on earlier foundations.
+description: Kyrou's active release-feedback roadmap, numbered from 12 through 21.
 ---
 
-Kyrou's active post-v0.1 roadmap lives in **`docs/roadmap/`**. Treat that folder as the source of truth; this page is only a scannable public summary. Current shipped Kyrou remains local-first and account-free by default.
+Kyrou's active roadmap lives in **`docs/roadmap/`**. Treat that folder as the source of truth; this page is only a scannable public summary. Current shipped Kyrou remains local-first and account-free by default.
 
-The batches are ordered deliberately (work them in numeric order; later batches depend on earlier ones):
+The current sequence is release-first: make sync reliable, gather real feedback from prospective PMF users and the ICP, then monetize only after the retention loop is credible.
 
 | # | File | Theme | Why this order |
 |---|---|---|---|
-| 10 | `docs/roadmap/10-android-pc-distribution.md` | Android + PC distribution | Add Android build/signing paths while preserving the current Windows NSIS pipeline |
-| 11 | `docs/roadmap/11-optional-accounts-supabase.md` | Optional accounts + Sync Center | Add shell-level Sync discovery, Continue with Google, Settings → Sync, and Supabase/RLS foundations without requiring sign-in |
-| 12 | `docs/roadmap/12-local-first-two-way-sync.md` | Dexie-first sync engine | Add outbox, pull, merge, tombstones, retries, and visible conflicts after account foundations exist |
-| 13 | `docs/roadmap/13-cross-platform-automation.md` | Automation matrix | Cover account-free, sync, device, and release journeys with WebdriverIO, Appium, and local Supabase checks |
-| 14 | `docs/roadmap/14-entitlements-stripe-billing.md` | Stripe entitlements | Add paid entitlements after free local planning and basic task/project sync are protected |
-| 15 | `docs/roadmap/15-planning-recurrence-rituals.md` | Recurrence + planning rituals | Extend planning primitives after the data/sync foundation is stable |
-| 16 | `docs/roadmap/16-focus-time-tracking.md` | Focus + actual time | Track focus sessions without confusing estimates, scheduled time, and actual time |
-| 17 | `docs/roadmap/17-guided-routines.md` | Guided routines | Add one-step-at-a-time routines with accessible controls |
-| 18 | `docs/roadmap/18-system-task-overlay.md` | System overlay/reminders | Explore PC/Android schedule-first/manual-focus overlay surfaces with permission fallback |
-| 19 | `docs/roadmap/19-android-home-screen-widgets.md` | Android widgets | Add Today, Pomodoro/focus, and compact Quick Add widgets that still work offline/account-free |
-| 20 | `docs/roadmap/20-ios-follow-up.md` | iOS follow-up | Defer iOS distribution, widgets, and Live Activities until Android/PC lessons are proven |
+| 12 | `docs/roadmap/12-sync-stuff-to-work.md` | Sync reliability | Finish create/edit/delete, stale push handling, conflict recovery, and restoration before inviting more users |
+| 13 | `docs/roadmap/13-feature-requests-roadmap.md` | Featurebase + feedback loop | Add a public Feature Requests & Roadmap page with Featurebase, then connect feedback to roadmap decisions |
+| 14 | `docs/roadmap/14-recurring-tasks.md` | Recurring tasks | Ship recurring tasks as a free core planning feature |
+| 15 | `docs/roadmap/15-day-evening-planner.md` | Day & Evening Planner | Add the dedicated planning stage for onboarding, day-start review, and evening wrap-up |
+| 16 | `docs/roadmap/16-guided-routines.md` | Guided routines | Build repeatable routines on top of the planning primitives |
+| 17 | `docs/roadmap/17-payment-system.md` | Kyrou Pro billing | Introduce $5/month Pro after sync reliability and retention evidence exist |
+| 18 | `docs/roadmap/18-referral-sharing.md` | Sharing/referrals | Add opt-in productive-progress sharing and referrals |
+| 19 | `docs/roadmap/19-known-bugs.md` | Known bugs | Keep release blockers visible before the release candidate |
+| 20 | `docs/roadmap/20-release-app.md` | Release app | Release the app and measure real-user signals |
+| 21 | `docs/roadmap/21-post-release-ui-improvements.md` | Post-release UI | Improve UI from observed behavior and feedback after release |
 
-## Roadmap invariants
+## Roadmap Invariants
 
 - **Local-only remains permanent.** Kyrou works without an account today, and optional accounts must not turn local planning into a trial.
-- **Sync is optional and explicit.** Desktop discovers Sync from the sidebar; mobile discovers it from the top app bar. **Settings → Sync** manages it, but first-time OAuth starts only after **Continue with Google**.
-- **Native OAuth stays out of WebViews.** Planned Google sign-in uses the external system browser with PKCE-S256, callback validation, and platform secure storage.
-- **Sign-out does not cross-contaminate accounts.** Local rows stay usable, pending sync data is quarantined to the origin account, and a different account requires an explicit keep/export/remove/re-home choice.
-- **The thin slice is 3-5 days.** The planned vertical slice is responsive shell + Android build path + Sync entry shells, then Supabase/Google/RLS, then Dexie-first push/pull/merge, then automation/release checks.
-- **Free core sync stays free.** Free local planning and basic task/project sync are not Stripe-gated.
-- **Paid deletion resolves billing first.** Stripe subscriptions/customers must be cancelled or unlinked and reconciled before profile/domain rows are purged.
-- **Overlay/widgets are future platform work.** PC/Android overlay/reminder work and Android widgets come after sync and platform foundations. They are not shipped in current Kyrou.
-- **iOS is deferred.** Batch 20 is research/feasibility; no current release builds iOS or promises arbitrary iOS system overlays.
+- **Sync is optional and explicit.** Desktop discovers Sync from the sidebar; mobile discovers it from the top app bar. Settings -> Sync manages it, but first-time OAuth starts only after Continue with Google.
+- **Free local core stays free.** Local planning and recurring tasks are free; sync has a 30-day trial and then belongs to Kyrou Pro.
+- **Kyrou Pro is priced plainly.** The planned Pro tier is $5/month for reliable ongoing sync and service-backed power features.
+- **Deferred platform ideas stay deferred.** Older platform/distribution work, focus tracking, overlays, Android widgets, and iOS follow-up live in `docs/deferred-roadmap/`.
+- **Feedback steers polish.** UI improvements come after release feedback, not before the learning loop.
 
-## Cross-cutting notes
-
-- Batches 1-8 are completed and archived under `docs/roadmap/archive/`. Batch 9 (responsive
-  accessibility) has also shipped its code and documentation — see
-  `docs/roadmap/9-responsive-accessibility.md` for status detail, including the manual
-  on-device/viewport verification pass that is still outstanding. The active upcoming roadmap
-  starts at Batch 10.
-- Dexie remains the immediate source of truth even after planned Supabase sync. UI should keep reading local repositories rather than remote tables directly.
-- Basic task/project sync is planned as free core behavior. Stripe entitlements should only unlock later paid-only features.
-- Android/PC ship before iOS. iOS distribution, widgets, and Live Activities need a separate feasibility decision in Batch 20.
-
-For exact task-level detail, open the numbered file for the active batch in `docs/roadmap/`.
+For exact task-level detail, open the numbered file for the active item in `docs/roadmap/`.
