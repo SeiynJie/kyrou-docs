@@ -93,19 +93,32 @@ Concretely: `src/db/repositories/taskRepository.ts` exports plain async function
 
 **Components must never `import db from '@/db'` directly** — always go through a repository function. This keeps every read/write typed and testable in one place, and it means the UI never manually manages "loading" state or refetch logic — `useLiveQuery` re-runs the query whenever the underlying table changes.
 
+### Every row belongs to an account
+
+Rows are not just "in the database" — each one carries an `ownerId` naming who it belongs to, and repository reads are scoped to whoever is currently signed in. A device can hold data for several accounts plus signed-out (guest) data at once; you only ever see the active one.
+
+`ownerId` is never `null` — `null` is not a valid IndexedDB key, so a row holding it would silently drop out of every index. Signed-out data uses a `GUEST` sentinel instead. `src/db/scope.ts` is the single place that resolves the active scope (`activeScope()`, `useActiveScope()`) and exposes the scoped query helpers the repositories build on.
+
+Two consequences worth knowing when you write code here:
+
+- **Any `useLiveQuery` must include the active scope in its dependency array.** Dexie re-runs live queries when the *database* changes, not when the session does — so without the scope dependency, switching accounts leaves the old account's data on screen.
+- **Signing in never takes ownership of another account's data.** Signing in claims genuine guest rows only. Rows left behind by a previous account keep their owner, stay invisible, and reappear intact when that account signs back in.
+
 Zustand (`src/stores/uiStore.ts`, `src/stores/settingsStore.ts`) is for the *other* kind of state — things that aren't domain data: which modal is open, which task is selected, which view tab is active, unsaved-markdown tracking, keyboard-shortcut bindings. If it should survive a page reload and represents "your data," it belongs in Dexie. If it's transient UI state, it belongs in a store.
 
 ## Active roadmap direction
 
-The post-v0.1 roadmap keeps Kyrou local-first. Accounts, Supabase, Stripe, Android overlays, and Android widgets are planned work, not current shipped behavior.
+The post-v0.1 roadmap keeps Kyrou local-first. Optional accounts and sync are being migrated from Supabase to Neon, but the migration is incomplete and not cut over. Stripe, Android overlays, and Android widgets remain planned work.
 
 - Kyrou stays account-free by default; local-only use remains permanent.
 - Planned Sync entry points live in the shell: desktop sidebar and mobile top app bar. **Settings → Sync** manages the account and sync state after discovery.
 - OAuth starts only after the user chooses Sync and presses **Continue with Google**. Native OAuth uses the system browser, not an embedded WebView.
-- Planned sync remains Dexie-first: local writes update IndexedDB immediately, then a durable outbox and merge layer converge with Supabase later.
+- Planned sync remains Dexie-first: local writes update IndexedDB immediately, then a durable outbox and merge layer converge with Neon later. The client uses Neon Managed Auth and the Data API through `@neondatabase/neon-js`; raw SQL lives in `database/migrations/`.
 - Planned Sync status has one shared source for desktop sidebar, mobile top app bar, Settings -> Sync, and Sync Center.
 - Signing out keeps local rows usable, quarantines pending sync data to the origin account, and never auto-attaches that data to a different account.
-- The required thin slice is 3-5 days: responsive/platform gates, Sync shells, Supabase/Google/RLS, Dexie-first push/pull/merge, then WebdriverIO/Appium/release verification.
+- Google OAuth starts through the official `@neondatabase/auth` `createAuthClient().signIn.social()` API, and Kyrou opens the returned provider URL. Browser OAuth returns directly to the web origin. Desktop OAuth returns through the deployed `workers.dev` Worker to `kyrou://auth` in production or `kyrou-dev://auth` in development.
+- Each desktop attempt uses a random, single-use `oauth_attempt` nonce valid for at most ten minutes. The Worker allowlists and relays only verifier/error fields and the nonce; the client rejects unsolicited, mismatched, expired, or replayed callbacks before using Neon's `getSession()` verifier flow.
+- Neon SDK persistence is now the only session mechanism; the custom Tauri auth file is gone. Browser Google OAuth is verified live, and desktop-development OAuth is verified end to end through the system browser, deployed Worker, `kyrou-dev://` launch, and verifier redemption. The browser tab left after the native handoff must be closed manually because browser security prevents reliable automatic closure. SQL/RLS and desktop restart-persistence checks remain outstanding. Account deletion is hidden and deferred until Neon documents a supported server-side contract.
 - Free local planning and basic task/project sync remain free. Stripe entitlements are planned only for later paid features, and paid account deletion must cancel/reconcile Stripe before profile data is purged.
 - PC/Android overlay/reminder work and Android widgets are future platform batches. iOS is deferred to feasibility work and is not part of the current release pipeline.
 
