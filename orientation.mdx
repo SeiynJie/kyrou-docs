@@ -91,6 +91,8 @@ component re-renders automatically
 
 Concretely: `src/db/repositories/taskRepository.ts` exports plain async functions (`getTasksByDate`, `moveTaskToDate`, ...) plus React hooks built on `useLiveQuery` from `dexie-react-hooks` (`useTodayTasks`, `useTasksForRange`). `src/db/repositories/projectRepository.ts` does the same for projects.
 
+Recurring tasks reuse this same path rather than adding a second one: `src/db/repositories/recurrenceRepository.ts` materializes a `RecurrenceRule` into ordinary `tasks` rows ("occurrences") ahead of the visible range, so an occurrence is a normal task all the way down — see [Recurring Tasks](/features/recurring-tasks). Recurrence sync is not built yet; sync itself is currently disabled behind `SYNC_ENABLED`.
+
 **Components must never `import db from '@/db'` directly** — always go through a repository function. This keeps every read/write typed and testable in one place, and it means the UI never manually manages "loading" state or refetch logic — `useLiveQuery` re-runs the query whenever the underlying table changes.
 
 ### Every row belongs to an account

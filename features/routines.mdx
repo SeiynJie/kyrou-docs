@@ -1,0 +1,23 @@
+---
+title: Guided routines
+description: Create reusable local workflows and execute them one step at a time.
+---
+
+## Library
+
+Open **Routines** from the desktop sidebar to see reusable workflows. **New routine**
+captures a title, icon, schedule label, and ordered steps with optional descriptions,
+time estimates, and planner/calendar links. Routine definitions and sessions are stored
+locally in IndexedDB.
+
+## Execution
+
+Starting a routine creates one persisted active session. The current step can be
+completed, skipped, paused, resumed, revisited with Back, or abandoned. Progress is
+retained across reloads, and the library prevents starting a second session while one
+is active.
+
+On desktop, the right-hand ReUI Stepper 13 rail shows the complete sequence and labels
+each step as current, up next, skipped, or completed. On mobile, current-step controls
+remain available without the desktop rail. Routine sync is deferred; this release is
+local-only.

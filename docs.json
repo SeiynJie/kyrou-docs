@@ -33,6 +33,7 @@
           "features/calendar",
           "features/week",
           "features/inbox-projects",
+          "features/recurring-tasks",
           "features/quick-add",
           "features/settings-updates",
           "features/desktop-tauri"

@@ -1,0 +1,74 @@
+---
+title: Recurring Tasks
+description: Repeat rules that materialize into ordinary tasks, so planner, calendar, and drag/drop work on them unchanged.
+---
+
+## What it does
+
+Recurring tasks let a task repeat on a pattern (daily, weekdays, weekly, monthly, yearly, or a
+custom interval). Instead of computing "virtual" occurrences at read time, Kyrou materializes each
+occurrence as a real row in the `tasks` table ahead of the visible range — an occurrence *is* a
+task, so planner, calendar, drag/drop, backlog, and completion all work on it with no special
+casing. This is the same master-occurrence-exception model used by RFC 5545, Google Calendar, and
+Microsoft Graph.
+
+## Files tied to it
+
+| File | Purpose |
+|---|---|
+| `src/lib/recurrence.ts` | Pure expansion engine — `expandRule()` turns a rule + date range into occurrence dates, `describeRule()` renders the human-readable summary |
+| `src/lib/uuid.ts` | RFC 4122 v5 UUID over native Web Crypto, used for deterministic occurrence identity |
+| `src/types/recurrence.ts` | `RecurrenceRule` type |
+| `src/db/repositories/recurrenceRepository.ts` | Rule CRUD, ownership scoping, materialization pass |
+| `src/features/today/components/TaskDetailSheet.tsx` | Hosts the Repeat row |
+| `src/features/today/components/RecurrenceEditor.tsx` | Custom repeat modal (interval, frequency, weekdays, start date, end condition) |
+| `src/features/today/components/RecurrenceScopeModal.tsx` | This only / This and following / All scope chooser |
+| `src/features/sync/flags.ts` | `SYNC_ENABLED` — sync is currently off, so recurring data is local-only |
+
+## Key concepts / how it connects
+
+- **Materialization, not virtual projection.** A `RecurrenceRule` (pattern + task template) never
+  renders directly. Occurrences generate as ordinary `tasks` rows on app startup and on
+  planner/calendar range navigation, via a ref-guarded `useEnsureOccurrences` hook — not on every
+  render. Generation is bounded (`MAX_PER_PASS = 200`, `MAX_HORIZON_DAYS = 400`) so one rule can
+  never flood the table.
+- **Deterministic identity.** Each occurrence's sync identity is `uuidv5(rule.syncId + ':' +
+  originalDate)`, so re-running materialization for the same rule/date is idempotent — it can never
+  create a duplicate occurrence.
+- **`generatedThrough` is local-only.** It's the cursor tracking how far a rule has been
+  materialized. It deliberately never syncs and has no server column.
+- **Two removal kinds, deliberately opposite.** A user skipping one occurrence tombstones it
+  (soft-delete) and permanently claims that date slot — the occurrence dedupe read does not filter
+  soft-deleted rows, so a skipped occurrence never comes back. A pattern-change removal (switching
+  Daily → Weekly, for example) hard-deletes the now-invalid occurrences instead, freeing their date
+  slots so the new pattern can regenerate them.
+- **Completed and past occurrences are frozen.** A `status: 'done'` occurrence, or one whose date
+  has already passed, is never rewritten by a later edit to the series.
+- **Scope chooser on structured edits.** Editing a discrete field (status, priority, project,
+  duration, date/time) or deleting a recurring task opens `RecurrenceScopeModal` — This only
+  / This and following / All, always an explicit choice, never a silent default. All user-facing
+  deletion routes through a centralized `DeleteCoordinator` (App.tsx); delete "All" tombstones
+  every occurrence including past and completed ones. Continuous edits (typing a title or notes)
+  and any drag/resize/reschedule interaction default silently to "this only" instead — prompting
+  on every keystroke or drag would be unusable.
+- **Card indicators.** `TaskCard` and the calendar's `TimeBlockBody` show a `repeat` glyph (or
+  `event_repeat` when an occurrence has been individually edited), gated on the `showRecurrence`
+  setting (on by default).
+- **Sync is off.** Kyrou's sync layer is currently disabled behind `SYNC_ENABLED`
+  (`src/features/sync/flags.ts`), and the Neon migration for `recurrence_rules` has not been
+  written — recurring data lives in IndexedDB only for now.
+
+## Not yet built
+
+- Recurrence sync across devices.
+- Recurring Quick Add NLP (typing a repeat pattern inline).
+- Hourly recurrence.
+- Nth/last-weekday rules ("2nd Tuesday").
+- Planning rituals — split out to a separate deferred roadmap item (`docs/roadmap/14b-planning-rituals.md`).
+
+## Where to start editing
+
+- Changing what patterns are expressible -> `src/lib/recurrence.ts` (`expandRule`).
+- Changing the Repeat row or presets -> `RecurrenceEditor.tsx` / `TaskDetailSheet.tsx`.
+- Changing materialization bounds -> `MAX_PER_PASS` / `MAX_HORIZON_DAYS` in the recurrence repository.
+- Changing when occurrences regenerate -> `useEnsureOccurrences`.
