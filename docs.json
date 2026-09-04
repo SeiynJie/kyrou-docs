@@ -23,6 +23,7 @@
           "access",
           "deploy",
           "release",
+          "release-readiness",
           "future-features"
         ]
       },
