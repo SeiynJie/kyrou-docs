@@ -1,161 +1,122 @@
 ---
 title: Styling
-description: The Tailwind v4 token system, dark/light theming, and the Button component as a worked example.
+description: The CSS token system after the 2026-09-04 design port — dark-by-default tokens with Light/System support, the css() helper, and where design authority now lives.
 ---
+
+## What changed
+
+The pre-port styling system (Tailwind v4 `@theme` tokens in `src/index.css`, `cn()` /
+`tailwind-merge`, `src/components/ui/*`) was removed in the 2026-09-04 design port. There is no
+Tailwind anymore. Styling now mirrors Seji's Claude Design app exactly: CSS custom-property tokens
+plus verbatim component CSS files.
 
 ## The token system
 
-Kyrou has no `tailwind.config.js` — Tailwind v4 is configured entirely inline in **`src/index.css`** via an `@theme` block. That block defines CSS custom properties like `--color-surface`, `--color-primary`, `--color-on-secondary`, `--radius-lg`, and font families. Tailwind then auto-generates matching utility classes (`bg-surface`, `text-on-secondary`, `rounded-lg`, ...).
+Tokens live in `src/ds/tokens/*.css`, imported once globally by `src/main.tsx`:
 
-```css
-/* src/index.css */
-@theme {
-  --color-surface: #141313;
-  --color-secondary: #4648d4;
-  --color-on-secondary: #ffffff;
-  --radius-lg: 0.5rem;
-  /* ...more tokens */
-}
-```
+| File | Purpose |
+|---|---|
+| `colors.css` | Every color custom property (`--ink-*` neutral ramp, `--sand-*` accent, `--azure-*`, `--label-*`, semantic aliases like `--bg-app`, `--text-primary`, `--accent`) |
+| `typography.css` | Font-size/weight/line-height scales |
+| `fonts.css` | `--font-display` / `--font-sans` (Space Grotesk) and `--font-mono` (JetBrains Mono), loaded from `@fontsource/*` packages — no Google Fonts `<link>` |
+| `spacing.css` | Spacing scale |
+| `effects.css` | Shadows and similar |
+| `motion.css` | Durations/easings |
+| `base.css` | Base element resets |
 
-**Rule: never hardcode a color in a component** (no `bg-[#141313]`, no inline `style` prop with a literal hex color). Always use a token class. If the color you need doesn't have a token yet, add one to the `@theme` block (or extend the light-theme override below) rather than reaching for a literal.
+There is **no `@theme` block, no Tailwind utility classes, and no `tailwind-merge`.** Component
+CSS is copied verbatim from the design (`design-import/kyrou-app/*.dc.html`'s `<style>` blocks) into
+a sibling `.css` file per component under `src/app/`, imported by that component only. `src/ds/`
+components ship their own shared CSS in `src/ds/styles.css`.
 
-`DESIGN.md` (repo root) is the authority on what tokens exist and what they're for — check it before inventing a new token, and update it if you add one. `npm run design:lint` checks the file for consistency, and `npm run design:export:tailwind` can regenerate a Tailwind-compatible export from it.
+**Dark by default; Light and System are also supported.** `src/ds/tokens/colors.css` defines the
+dark palette on `:root` and a `:root[data-theme="light"]` override for light mode.
+`src/kyrou/theme.ts` (`KyrouTheme.get/set/init`) resolves the persisted `kyrou-theme` key
+(`'light' | 'dark' | 'system'`, default `'dark'`) and sets `data-theme` on `<html>`; `'system'`
+follows `prefers-color-scheme`. The Settings → Appearance → Theme `SegmentedControl`
+(`src/app/SettingsModal.tsx`) is the user-facing control, and `index.html`'s inline first-paint
+script applies the persisted theme before first render so there's no flash.
 
-## Dark / light theming
+**Rule: never hardcode a color in a ported component.** If a value isn't in
+`src/ds/tokens/*.css`, it isn't part of the current design system — check
+`design-import/kyrou-app/` (canonical) or `design-import/kyrou-ds/` (reference; the app zip's
+compiled `_ds_bundle.js` wins on any conflict) before inventing one.
 
-Dark is the default and is just the token values written directly in `:root`/`@theme`. Light mode is a **second set of the same custom properties**, scoped under `[data-theme="light"]`:
+## Inline styles: the `css()` helper
 
-```css
-/* src/index.css */
-[data-theme="light"] {
-  --color-surface: #fdfcff;
-  --color-on-surface: #1b1b1f;
-  /* ... */
-}
-```
-
-`src/lib/theme.ts` is what flips the attribute:
+The design's inline `style="a:b;c:{{ x }}px"` attributes became
+`style={css('a:b;c:${x}px')}` via `src/kyrou/css.ts` (`css()` is the ported form of the design
+runtime's `cssToObj`, including `--custom-property` values). This keeps the exact declaration
+strings diffable against the source `.dc.html` file — it is not a general-purpose style utility,
+just the mechanical translation of that one pattern.
 
 ```ts
-export function applyTheme(pref: ThemePref): void {
-  document.documentElement.dataset.theme = resolveTheme(pref)
-}
+// src/kyrou/css.ts usage, from a ported component
+style={css(`width:${v.width}px;background:var(--accent)`)}
 ```
 
-`resolveTheme` turns a stored preference (`'light' | 'dark' | 'system'`) into an actual `'light' | 'dark'`, and `initThemeSync()` applies it on load and keeps it synced to both the settings store and the OS `prefers-color-scheme` media query. Because component classes reference tokens (`bg-surface`, not a literal hex), the exact same JSX renders correctly in both themes automatically — there is nothing to change per-component when someone switches themes.
+Strings containing `url(...)` or a `;` inside parentheses were moved to the component's `.css`
+file instead, per the port's rulebook (R3).
 
-## Focus outline
+## Design system components (`src/ds/`)
 
-`src/index.css` has a global `:focus-visible` rule (in `@layer base`) that draws every keyboard-focus ring in the `secondary` token, replacing the native white UA outline app-wide — `Button`'s own ring moved from `ring-primary/50` to `ring-secondary` to match. `secondary` is the one focus colour in the app; don't introduce another.
+Ten shared components, written from `design-import/kyrou-ds/`'s JSX and then diffed against the
+app zip's compiled `_ds_bundle.js` (the bundle wins on any difference):
 
-## Responsive utilities
+`Badge`, `Button`, `Checkbox`, `IconButton`, `NavItem`, `ParsedChip`, `SegmentedControl`,
+`StatusPill`, `Switch`, `TimeChip` — re-exported from `src/ds/index.ts`. They are plain function
+components with default parameters (no `defaultProps`, which React 19 dropped for function
+components), and no global registration (the design runtime's `x-import
+component-from-global-scope="KyrouDesignSystem_....Button"` pattern is gone — pages `import {
+Button } from '@/ds'` directly).
 
-768px (Tailwind's `md`) is the one mobile/desktop boundary in the app. On the CSS side that's
-just `md:` variants; on the JS side, the only place that reads it is `useIsMobile()`
-(`src/lib/hooks/useMediaQuery.ts`) — don't hardcode `768` in a component.
+Three known prop drops versus the DS-zip reference (the bundle won, per the rule above), none ever
+passed by any ported page so none have a visible effect: `Checkbox` lost its `tone` prop
+(undisclosed — no in-file PORT-NOTE); `StatusPill` lost its `dot` prop (undisclosed — no in-file
+PORT-NOTE); `NavItem` lost `tooltip`/`collapsed`/`shortcut` props (disclosed — see the
+`PORT-NOTE` in `src/ds/NavItem.tsx`).
 
-- **`.touch-target-sm` / `.touch-target-md`** (`src/index.css`) expand a control's hit area
-  toward roughly 48px via real padding on the control's own box (not an overhanging
-  pseudo-element, which could paint over a tightly-spaced neighbour), scoped to
-  `@media (pointer: coarse)` only, so it changes nothing on desktop mouse/trackpad layout. Add it
-  to small or icon-only touch controls (nav tabs, close buttons); a control already ≥48px on its
-  own (the FAB) doesn't need it.
-- **Never redefine `sr-only` / `not-sr-only`.** Tailwind already ships both as layered utilities.
-  Redefining `.sr-only` unlayered in `src/index.css` would outrank Tailwind's layer and silently
-  break `md:not-sr-only` (content meant to reveal at desktop would stay hidden everywhere).
-- **Text scaling:** containers wrapping user-visible text use `min-h-*` rather than a fixed `h-*`,
-  so an enlarged system/browser font grows the box instead of clipping the label. This does not
-  apply to deliberately-shaped elements — icon-only square buttons, the FAB, avatars, checkboxes
-  — those stay fixed-size by design.
-- **Reduced motion:** a single global `@media (prefers-reduced-motion: reduce)` block in
-  `src/index.css` handles it app-wide; don't add per-component reduced-motion checks.
-- **Sheet vs. dialog:** `Modal` and `QuickAddModal` render as a bottom sheet below `md` and a
-  centered dialog at `md+`, sharing one class contract from `src/lib/sheetPresentation.ts` instead
-  of each re-deriving the shape (`BacklogSidebar` reuses its backdrop). `TaskDetailSheet` is also
-  a bottom sheet below `md`, but keeps its own classes because at `md+` it slides in from the
-  right edge rather than centering — don't try to force it onto `SHEET_WRAPPER`/`SHEET_PANEL`.
+## Icons
 
-- **Semantic success tokens:** `success`, `success-container`, and `on-success-container` exist
-  alongside the other semantic tokens (`error`/`error-container`) in both the default dark theme
-  and the `[data-theme="light"]` override, for positive confirmation states (e.g. 'swipe-to-restore preview for an already-done task') — use them instead of a one-off green.
+**`lucide`**, not `lucide-react`. The design renders `<i data-lucide="icon-name">` markup and
+calls a global icon-refresh function; the port keeps that exact pattern —
+`window.lucide.createIcons()` (declared in `src/global.d.ts`, wired in `src/kyrou/lucide.ts`) is
+called after any render that introduces new icon markup, matching the design's own rAF-debounced
+refresh rather than importing per-icon React components.
 
-Full rule set and rationale: `DESIGN.md` → "Responsive & Touch".
+## Class components, not hooks
 
-## Worked example: restyling `Button`
+Every `src/app/*.tsx` file is a `React.Component` class (`extends Component<Props, any>`), one
+per `design-import/kyrou-app/*.dc.html` file, matching the design runtime's `class Component
+extends DCLogic` shape one-to-one. There is no `StrictMode` (it would double-invoke
+`componentDidMount` side effects the design never accounted for). `render()` reads
+`const v: any = { ...this.props, ...this.renderVals() }`, mirroring the design template's
+render-value merge.
 
-`src/components/ui/Button.tsx` is a good example of the whole pattern in one file:
+## `<kyrou-collapse>`
 
-```tsx
-const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-secondary text-on-secondary font-bold shadow-lg shadow-secondary/10 hover:opacity-90 active:scale-95',
-  secondary: 'border border-outline-variant/30 text-on-surface font-medium hover:bg-surface-container-high',
-  ghost: 'border border-outline-variant/60 text-on-surface hover:bg-surface-container-high',
-  danger: 'text-error hover:bg-error-container/50',
-  action: 'bg-white text-[#1b1b1f] font-medium hover:opacity-90 active:scale-95',
-  tonal: 'bg-primary/10 text-primary hover:bg-primary/20',
-}
+The design's custom element (`customElements.define`, guarded by
+`if (!customElements.get('kyrou-collapse'))`) is kept verbatim, ported in `src/kyrou/collapse.ts`
+and typed as a JSX intrinsic in `src/global.d.ts`: `<kyrou-collapse open={v.x}>`.
 
-const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'px-2 py-1 text-body-sm',
-  md: 'px-6 py-3 text-body-md',
-  lg: 'px-8 py-4 text-body-lg',
-}
+## Where design authority lives now
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', className, children, ...props }, ref) => (
-    <button
-      ref={ref}
-      className={cn(
-        'rounded-lg font-medium transition-all duration-200 disabled:opacity-30 ...',
-        variantStyles[variant],
-        sizeStyles[size],
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </button>
-  )
-)
-```
-
-### (a) Changing the button's own look
-
-To change what "primary" looks like everywhere, edit `variantStyles.primary` — e.g. swap `bg-secondary` for a new token, or add `rounded-full`. Because every `<Button variant="primary">` in the app shares this one object, the change applies globally in one edit. To add a whole new variant (e.g. `outline`), add a key to `ButtonVariant`, add a matching entry to `variantStyles`, done — no other file needs to change.
-
-`tonal` is the most recent example of exactly that (added 2026-07-16): the Week header's `Today` and the calendar's `Now` had drifted into two different looks for the same "jump to current time" action. No existing variant fitted the tinted-primary treatment — `ghost` is outlined, `secondary` is bordered — so a `tonal` key was added and both call sites became `<Button variant="tonal" size="sm">`. Note it uses `bg-primary/10` rather than a hardcoded tint, so it follows the theme into light mode for free.
-
-### (b) `cn()` — the clsx + tailwind-merge pattern
-
-`cn` (from `src/lib/utils.ts`) combines `clsx` (conditionally join class strings) with `tailwind-merge` (dedupe conflicting Tailwind classes, keeping the last one). This is why `className` is accepted last in `cn(base, variantStyles[variant], sizeStyles[size], className)` — a caller passing `className="px-10"` will correctly override the variant's `px-6`, instead of both classes existing and CSS specificity/order picking a winner unpredictably.
-
-### (c) Overriding from the parent vs. the child
-
-Because `Button` forwards `className` through `cn(...)`, a parent can override spacing/sizing per-instance without touching `Button.tsx` at all:
-
-```tsx
-// override just this instance's horizontal padding
-<Button variant="primary" className="px-10">Save</Button>
-```
-
-But a `Button`'s *position* relative to its siblings (margin between buttons, alignment in a row) is not the button's job — that belongs to the parent container's layout classes, not something you pass into `className` on the button itself:
-
-```tsx
-// good: parent owns the gap/alignment
-<div className="flex items-center gap-3">
-  <Button variant="ghost">Cancel</Button>
-  <Button variant="primary">Save</Button>
-</div>
-
-// avoid: don't reach for margin utilities on the button to fake a gap
-<Button variant="primary" className="ml-3">Save</Button>
-```
-
-The rule of thumb: **the component owns its own visual identity (color, padding, radius, font-weight) via its variant/size maps; the parent owns layout (gap, alignment, width in a flex/grid) via its own container classes.** If you find yourself passing margin or flex classes into a component's `className` prop from many call sites, that's a signal the parent layout should own it instead.
+`DESIGN.md` (repo root) points to the current sources of truth instead of restating them:
+`design-import/kyrou-app/` (canonical), `design-import/kyrou-ds/` (reference), and
+`src/ds/tokens/*.css` / `src/ds/*.tsx` (what's actually live in the app). `npm run design:lint`
+checks `DESIGN.md`'s own frontmatter for internal consistency — that frontmatter is a historical
+holdover from the pre-port Material 3 token set and does not describe the live tokens; do not use
+its color values when styling a component.
 
 ## Where to start editing
 
-- New color/spacing/radius token -> `src/index.css` `@theme` block (and the `[data-theme="light"]` override if it needs a different light-mode value) + update `DESIGN.md`.
-- A shared primitive's look (Button, Modal, Switch, ...) -> `src/components/ui/*.tsx`.
-- Layout spacing between elements -> the parent container's classes, not the child's.
+- New color/spacing/token value -> `src/ds/tokens/*.css`, then check whether `DESIGN.md` needs a
+  pointer update.
+- A shared primitive's look (`Button`, `Switch`, `Checkbox`, ...) -> `src/ds/*.tsx` — diff any
+  change against `design-import/kyrou-ds/` and the app zip's compiled bundle before shipping it.
+- A specific page/panel/modal's markup or styling -> its file under `src/app/` and the sibling
+  `.css` file; the source of truth is the matching `design-import/kyrou-app/*.dc.html`. Any
+  deviation from that source needs a `// PORT-NOTE:` comment and a note in whatever review/report
+  process is active for the change.
+- New icon -> use its `data-lucide="..."` name from the design; `window.lucide.createIcons()` is
+  already wired globally, no new import needed.

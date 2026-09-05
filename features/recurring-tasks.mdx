@@ -3,6 +3,15 @@ title: Recurring Tasks
 description: Repeat rules that materialize into ordinary tasks, so planner, calendar, and drag/drop work on them unchanged.
 ---
 
+<Note>
+**2026-09-04 design port:** recurrence is now the design's own engine, `src/kyrou/recur.ts`,
+operating on `src/kyrou/store.ts`'s single `localStorage` record — the Dexie `recurrence_rules`
+table, `recurrenceRepository.ts`, and `SYNC_ENABLED` flag referenced below no longer exist (sync
+of any kind was removed). Mobile layout and sync/accounts are out of scope in the current build.
+Verify exact occurrence-generation behavior against `design-import/kyrou-app/kyrou-recur.js`
+before assuming the pre-port semantics described below still hold in every edge case.
+</Note>
+
 ## What it does
 
 Recurring tasks let a task repeat on a pattern (daily, weekdays, weekly, monthly, yearly, or a

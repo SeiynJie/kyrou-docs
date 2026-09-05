@@ -3,6 +3,15 @@ title: Calendar
 description: The unified time-grid view shared by the Today and Week pages in Kyrou, with infinite scroll and zoom.
 ---
 
+<Note>
+**2026-09-04 design port:** Kyrou's UI and data layer were rebuilt as a mechanical port of a
+Claude Design app (see [Orientation](/orientation)). Mobile layout and sync/accounts are out of
+scope in the current build — desktop/web only, local `localStorage` storage, signed out by
+default. This page's implementation details may predate the port; the underlying source of truth
+is now `design-import/kyrou-app/Today.dc.html` / `Week.dc.html` and the ported `src/app/Today.tsx`
+/ `Week.tsx`.
+</Note>
+
 ## What it does
 
 The Calendar is a unified time-grid view shared by both the Today page (single day) and the Week page (seven days). It renders tasks as time blocks positioned by `startTime`/`duration`, supports infinite horizontal scrolling through days/weeks, and lets you pinch/ctrl-scroll to zoom the hour height.

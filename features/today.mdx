@@ -3,6 +3,15 @@ title: Today
 description: The main daily planner screen with Planner, Calendar, and Markdown modes over one source of truth.
 ---
 
+<Note>
+**2026-09-04 design port:** Today is now `src/app/Today.tsx`, a ported class component reading and
+writing `src/kyrou/store.ts`'s single `localStorage` record — there is no Dexie, `useLiveQuery`,
+`uiStore` (Zustand), or Markdown mode in the current build. Mobile layout and sync/accounts are
+out of scope. The implementation details below (Dexie tables, `uiStore` fields, `zustand`
+`persist`) describe the pre-port implementation; the source of truth for exact behavior is now
+`design-import/kyrou-app/Today.dc.html`.
+</Note>
+
 ## What it does
 
 The Today screen (`/today`) is the main daily planner. It has three modes, switchable via the view tabs (or the `Shift+C` shortcut, which cycles Planner -> Calendar -> Markdown): a **Planner** list view, a **Calendar** time-grid view, and a **Markdown** freeform text view of the same day's tasks. All three modes read and write the exact same `tasks` table — there is one source of truth, just three lenses on it.
@@ -49,6 +58,8 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
 - **Subtasks are real task rows, not an embedded list.** A subtask is a `tasks` table row with `parentId` set to its parent's id. It renders through the exact same `TaskCard` as a top-level task (an indented/compact variant), so it gets the full right-click context menu, natural-language date parsing on create and rename (e.g. typing "call mom tomorrow 3pm" as a subtask title), keyboard navigation, and drag/resize for free — there is no separate subtask component. Only one nesting level is allowed. `Turn into task` promotes a subtask to standalone; demoting a task back into a subtask uses the parent picker and blocks self-parenting or demoting a task that already has children of its own.
 - **Subtasks schedule independently of the parent.** A subtask carries its own `date`/`startTime`/`duration`. A subtask with both date + time **graduates out** of the parent's nested checklist and renders as its own block in the Today list (bucketed by start time, keeping the `↳ parent` hint and the parent's project color) — the done/total count still spans all subtasks. Unscheduled subtasks stay nested and also appear as draggable chips in the calendar's unscheduled header row (own date, else parent's date, else today). If every subtask is scheduled, the parent card shows no expand toggle at all — it looks like a normal task. Scheduling a subtask by typing a time inline auto-fills a missing date (own > parent > today), so it always lands on a visible day.
 - **Completion cascades both ways.** Marking a parent done marks every subtask done; toggling any subtask recomputes the parent (all subtasks done marks the parent done; reopening any subtask reopens the parent). Deleting a parent deletes its subtasks too.
+- **Promoted subtasks carry their own date.** A subtask dragged out of its parent (promoted) can be scheduled to a different day independently of the parent via right-click → Move to Today / Schedule, Shift+Left/Right in a week column, or dragging it to another day's column. The subtask stays linked to its parent (parent shows an "N promoted" badge), renders as its own row on its scheduled day, and completing/editing it updates the parent. Moving the parent leaves dated subtasks where they are; undated promoted subtasks follow the parent. Dropping a promoted subtask back into the parent, reparenting, or sending it to the backlog clears its date.
+- **Drop targets show where a card will land.** Dragging a task card or a subtask (nested or promoted) into another section or another Week column lights that section and draws a thin accent line at the exact slot the card will take between the cards already there. Reordering inside the same list keeps the cards-shift-apart gap instead of a line.
 - **Task clipboard and active date.** Shared task menus and `Ctrl+C`/`Ctrl+X`/`Ctrl+V` copy, cut, and paste focused or selected tasks. Copy duplicates to the active date; cut moves while preserving status and clears only after success. Paste uses an ephemeral active date shared by Planner and Calendar (Today always targets today). Failed pastes retain the clipboard for retry.
 - **Markdown task-ID markers are fully protected.** The hidden `^id` markers can no longer be reached or damaged by editing: a transaction filter blocks any edit that touches a marker unless the whole line is deleted (so deleting a task still works), `End` stops before the marker on marker lines, and `Enter` inserts the new task line below the full line so the id never migrates onto an empty task. A space typed at the end of a marker line stays visible (the hidden region is anchored to the exact two-space `  ^id` suffix `serializeTasks` emits).
 - **Markdown Copy button + Ctrl+C.** An M3 split-button copies the document in the format its label shows — "Copy · Plain text" (titles only), "With details" (full metadata), or "JSON" (structured, no internal ids) — with the caret menu switching the persisted format. Copy respects the active Hide checked / Today only filters: what you see is what you copy. `Ctrl+C`/`Ctrl+X` inside the editor strip `^id` markers from the selection; no copy path ever emits task ids.
@@ -145,6 +156,7 @@ Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features
   with a "Mark as done" / "Mark as not done" toggle above the usual actions — it flips every
   selected task in the same direction (any outstanding task in the selection marks all done; all
   done marks all outstanding).
+- **Defer flyout is a vertical list.** The context menu's Defer action opens a vertical input flyout (instead of a chip grid). An input field sits at the top for typing custom time offsets (e.g. "45m", "1h30m", "-30m", matching the duration field grammar); below it are preset buttons (+15m, +30m, +1h, −15m, −30m, −1h). Navigation: ↑/↓ highlight presets, Enter applies, type and Enter for a custom offset. A preview shows the resulting time at the bottom.
 - **Select mode.** A `checklist` toggle in the planner header (Today + Week) or `Shift+M`
   turns on multi-select: task checkboxes become selection controls, tapping a card selects it
   (instead of opening detail or toggling done), and right-clicking runs bulk context-menu

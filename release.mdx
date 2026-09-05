@@ -57,7 +57,7 @@ These steps describe the current Windows desktop release pipeline. Planned Andro
    <Warning>
    Always cut the tag from `main`. The tag decides what gets built, so a tag on a feature branch silently ships a release missing everything on `main`.
    </Warning>
-6. The in-app updater (`src/features/settings/lib/updater.ts`) picks up the new release automatically — it polls `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`, which the release workflow just published to.
+6. The in-app updater (`src/tauri/updater.ts` — moved here by the 2026-09-04 design port; formerly `src/features/settings/lib/updater.ts`) picks up the new release automatically — it polls `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`, which the release workflow just published to.
 7. A `publish-docs` job (`needs: release`) also runs, invoking `.github/workflows/docs-publish.yml` via `workflow_call` — so cutting a release also mirrors the current `docs-site/` into `kyrou-docs` and refreshes the live Mintlify site, in addition to the normal on-push trigger. See [Deploy](/deploy) for the mirror mechanics.
 
 ## Planned Android/PC release direction
@@ -66,28 +66,13 @@ The roadmap adds Android and broader PC distribution after responsive accessibil
 
 Do not describe CI as already building Android until the Android job exists and a signed/dry-run artifact has been verified. iOS release work is deferred to Batch 20 and is not part of the current Windows pipeline.
 
-## Supabase-to-Neon offline cutover
+## Legacy env vars still injected (harmless, unused)
 
-CI/CD is cut over: release builds now inject `VITE_NEON_AUTH_URL`, `VITE_NEON_DATA_API_URL`, and `VITE_KYROU_ACCOUNT_URL` from GitHub repository variables instead of the old `VITE_SUPABASE_*` vars, so release artifacts point at Neon production endpoints. The data migration steps below are a separate, still-manual cutover for existing Supabase data and remain gated on the checks listed.
-
-Do not run the data migration below until all blockers and verification checks pass.
-
-1. On a disposable child branch of the existing Singapore Neon project, enable Managed Auth and Data API, then apply `database/migrations/20260815000000_neon_schema.sql` through a direct database connection.
-2. Verify the schema with two Neon test identities: cross-user access is denied; create/update/delete/pull works; `sync_upsert` returns accepted and stale results correctly; cascades remove owned rows; and `tasks.order` remains `bigint`.
-3. Export **data only** from Supabase's `public` schema using its direct database URL (not the transaction pooler):
-   ```bash
-   pg_dump --format=custom --data-only --schema=public --file=kyrou-public.dump "$SUPABASE_DIRECT_URL"
-   ```
-4. Before restore, inspect every owner/user UUID in the exported public rows. Each referenced identity must already exist in `neon_auth.user` with the same UUID, or be explicitly mapped to a provisioned Neon identity. If there are no owned public rows, record that zero-row prerequisite instead. Do not disable the foreign keys or restore orphaned owners.
-5. Restore in foreign-key-safe order through Neon's direct connection without Supabase ownership or ACL objects:
-   ```bash
-   pg_restore --data-only --no-owner --no-acl --dbname="$NEON_DIRECT_URL" kyrou-public.dump
-   ```
-6. Compare every public table's row count and check orphaned references, UUIDs, timestamps, soft-deletion values, revisions, and bigint ordering. Repeat the identity preflight, dump, and FK-safe restore during an announced offline maintenance window, then retest browser, production Tauri, and development Tauri Google OAuth.
-7. Set `VITE_NEON_AUTH_URL` to the branch Auth base URL, `VITE_NEON_DATA_API_URL` to the branch Data API URL, and `VITE_KYROU_ACCOUNT_URL` to the deployed desktop relay origin. Vite loads these public values from `.env.local` during local development/builds; restart the dev server after edits. Configure Google credentials directly in Neon Auth, allow the exact callback `https://kyrou-account.puggaming43.workers.dev/auth/callback` and origin `https://kyrou-account.puggaming43.workers.dev`, and never expose database URLs, API keys, OAuth secrets, or server keys as `VITE_*` values.
-8. Keep Supabase read-only and retain an encrypted dump for 30 days. Rollback means restoring the retained Supabase application configuration and reopening writes there only after a rollback rehearsal; do not dual-write during the window.
-
-Current blockers: no live disposable-branch SQL/RLS verification has been performed, and Neon SDK session persistence has not been verified across a full desktop restart. Browser Google OAuth is verified live; desktop-development OAuth is verified end to end through the system browser, Worker, `kyrou-dev://` launch, and verifier redemption. The remaining browser tab must be closed manually due browser security. Account deletion is hidden and deferred pending a documented Neon server contract. The migration must not be described as cut over or production-ready.
+The release workflow still injects `VITE_NEON_AUTH_URL`, `VITE_NEON_DATA_API_URL`, and
+`VITE_KYROU_ACCOUNT_URL` from GitHub repository variables — a leftover from the pre-2026-09-04
+Supabase→Neon sync migration, which the [design port](/orientation) deleted entirely. Nothing in
+`src/` reads these anymore; they are dead weight in the workflow, not a live cutover. Cleaning them
+out of the workflow YAML is out of scope for the design-port branch.
 
 ## After a release
 

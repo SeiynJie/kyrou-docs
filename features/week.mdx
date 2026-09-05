@@ -3,6 +3,14 @@ title: Week
 description: The seven-day view, reusing Today's planner and calendar building blocks.
 ---
 
+<Note>
+**2026-09-04 design port:** Week is now `src/app/Week.tsx`, which embeds `src/app/Today.tsx` per
+day column (`embedded={true}`), both reading/writing `src/kyrou/store.ts`'s single `localStorage`
+record. There is no Dexie or `uiStore` (Zustand) in the current build. Mobile layout and
+sync/accounts are out of scope. The source of truth for exact behavior is now
+`design-import/kyrou-app/Week.dc.html`.
+</Note>
+
 ## What it does
 
 The Week screen (`/week`) shows seven days side by side, in either a planner-list layout or the shared time-grid calendar (see [Calendar](/features/calendar)) — same Planner/Calendar/Markdown mode-switching concept as Today, just scoped to a week instead of a single day.

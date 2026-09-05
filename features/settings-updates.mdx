@@ -3,6 +3,14 @@ title: Settings & Updates
 description: The tabbed Settings modal covering preferences, theme, keyboard rebinding, dev tools, and desktop updates.
 ---
 
+<Note>
+**2026-09-04 design port:** Settings is now `src/app/SettingsModal.tsx`. Startup, Tray, and
+Update-check remain wired to `src/tauri/*`; Sync & account and About & pricing ship as
+designed but are inert by decision; the sidebar Feedback item links to https://kyrou.featurebase.app/. Theme (Light / Dark / System, Appearance tab) is wired and
+carried over intact — dark is the default, not the only option. Mobile layout and sync/accounts
+are out of scope in the current build.
+</Note>
+
 ## What it does
 
 The Settings modal is a tabbed dialog (General, Appearance, Import & Export, Keyboard, Dev, Pricing, Updates) covering app preferences, theme, backup export/import, keyboard-shortcut rebinding, developer/seed tools, and — on the desktop build — checking for and installing app updates.

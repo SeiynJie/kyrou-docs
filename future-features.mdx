@@ -5,6 +5,11 @@ description: Kyrou's active release-feedback roadmap, numbered from 12 through 2
 
 Kyrou's active roadmap lives in **`docs/roadmap/`**. Treat that folder as the source of truth; this page is only a scannable public summary. Current shipped Kyrou remains local-first and account-free by default.
 
+**2026-09-04 design port:** Kyrou's UI and data layer were rebuilt as a mechanical port of a Claude
+Design app (see [Orientation](/orientation)); persistence is now a single `localStorage` record,
+not Dexie/IndexedDB. Roadmap items below that assume the old Dexie-first sync engine (12, 14a) now
+need a fresh storage design before implementation, not a resumption of the pre-port plan.
+
 The current sequence is release-first: make sync reliable, gather real feedback from prospective PMF users and the ICP, then monetize only after the retention loop is credible.
 
 | # | File | Theme | Why this order |

@@ -1,141 +1,134 @@
 ---
 title: Orientation
-description: The mental model you need before touching any Kyrou code — stack, source map, routing, data flow, and date/time conventions.
+description: The mental model you need before touching any Kyrou code — stack, source map, paging, data flow, and date/time conventions after the 2026-09-04 design port.
 ---
 
-Kyrou is a **local-first, mobile-first daily planner**. There is no backend, no auth, and no external API calls in v0.1 — everything lives in your browser's IndexedDB (or, in the desktop build, the same thing wrapped by Tauri). This page is the mental model you need before touching any code.
+Kyrou is a **local-first desktop/web daily planner**. There is no backend, no auth, and no
+external API calls — everything lives in one `localStorage` record, in the browser or in the
+Tauri desktop shell. On 2026-09-04 the entire UI and data layer were replaced by a **mechanical,
+one-to-one port** of a hand-built Claude Design app: Dexie/IndexedDB, React Router, Tailwind CSS,
+`@dnd-kit`, `chrono-node`, `react-toastify`, and the in-progress Supabase/Neon sync migration were
+all removed. This page describes the app as it exists today.
 
 ## The stack
 
 | Layer | Tech |
 |---|---|
-| UI framework | React 19 + Vite + TypeScript |
-| Styling | Tailwind CSS 4 (`@theme` tokens, no config file) |
-| Persistence | Dexie (IndexedDB wrapper), database name `KairoDB` |
-| App/UI state | Zustand |
-| Drag & drop | @dnd-kit |
-| Natural-language parsing | chrono-node (powers Quick Add) |
-| Desktop packaging | Tauri (Rust shell, NSIS installer on Windows) |
+| UI framework | React 19 + Vite + TypeScript, class components (`extends Component<Props, any>`) |
+| Styling | CSS custom-property tokens in `src/ds/tokens/*.css`, dark by default with Light/System support, no Tailwind |
+| Persistence | One `localStorage` record (`kyrou:data:v1`) owned by `src/kyrou/store.ts` |
+| Desktop settings | Zustand (`src/tauri/settingsStore.ts`) — three booleans, not domain data |
+| Icons | `lucide` (`window.lucide.createIcons()`), not `lucide-react` |
+| NLP quick-add parsing | The design's own parser, `src/kyrou/parse.ts` — no `chrono-node` |
+| Desktop packaging | Tauri v2 (Rust shell, NSIS installer on Windows) |
 
 ## The `src/` map
 
 ```
 src/
-  main.tsx          entry point, mounts <App/>
-  App.tsx           router + global overlays (see below)
-  stores/           Zustand stores — ephemeral UI state only
-  db/                Dexie schema, seed data, backup/import, repositories
-  lib/               framework-agnostic utilities + hooks
-  components/        shared layout & ui primitives (not feature-specific)
-  types/             shared TypeScript types (Task, Project, ...)
-  features/          one folder per feature area (today, week, calendar, ...)
+  main.tsx          entry point: fonts, tokens, lucide bootstrap, mounts <App/>
+  App.tsx           the shell — no router, page state + kyrou:* window listeners
+  global.d.ts       window flags (KYROU_GLIDING, sinks, ...), <kyrou-collapse>, *.png
+  app/              29 ported pages/panels/modals/leaves (flat, PascalCase, one per design file)
+  ds/               10 shared design-system components + CSS token files
+  kyrou/            25 engine modules — store, recur, routines, projects, parse, undo, theme, ...
+  tauri/            desktop-only: tray, autostart, updater, hotkey, backup, links, settingsStore
 ```
 
-The `@/` path alias maps to `src/` (configured in `vite.config.ts` and `tsconfig.app.json`), so imports read `import { Task } from '@/types/task'` instead of a chain of `../../..`.
+The `@/` path alias maps to `src/` (configured in `vite.config.ts` and `tsconfig.app.json`).
+`design-import/kyrou-app/` (canonical) and `design-import/kyrou-ds/` (reference) are the extracted
+Claude Design projects every ported file was translated from — read-only, excluded from build,
+lint, and tests.
 
-## Routing and global overlays
+## Paging, not routing
 
-`src/App.tsx` uses **`HashRouter`**, not `BrowserRouter`. This is required because the Tauri desktop build loads the app from a `file://` URL, where a normal history-based router can't resolve paths.
+There is **no router**. `src/App.tsx` switches between Today / Week / Inbox / [Routines](/features/routines) by local
+component state, mirrored to `localStorage['kyrou:lastPage']` so the last page persists across a
+restart. Global keyboard shortcuts (Shift+1..4, Shift+A for Quick Add, Ctrl+. for Settings) and
+every `kyrou:*` window event listener live in `App.tsx`; Ctrl+Z/Ctrl+Y for undo/redo are a global
+capture listener in `src/kyrou/undo.ts`. Pages
+accept an `embedded?: boolean` prop — Week mounts a `Today` instance per day column with
+`embedded={true}`.
 
-Routes (all wrapped in `AppLayout`, from `src/components/layout/AppLayout.tsx`):
+## Theme
 
-| Path | Page |
-|---|---|
-| `/today` | `TodayPage` (planner / calendar / markdown for a single day) |
-| `/week` | `WeekPage` (7-day view) |
-| `/inbox` | `InboxProjectsPage` (backlog + project management) |
-| `*` | redirects to `/today` |
+Dark is the default, not the only option. `src/kyrou/theme.ts` (`KyrouTheme.get/set/init`)
+resolves the persisted `kyrou-theme` key (`'light' | 'dark' | 'system'`) and sets `data-theme` on
+`<html>`; light tokens are the `:root[data-theme="light"]` override in
+`src/ds/tokens/colors.css`. `index.html`'s inline first-paint script applies the persisted choice
+before first render (no flash), and Settings → Appearance → Theme is the user-facing switch.
 
-A handful of things are mounted once at the App root, outside any route, because they're global overlays that can pop up from anywhere: `QuickAddModal`, `TaskDetailSheet`, `SettingsModal`, `CreateProjectModal`, `MarkdownLeaveGuard`, and `ToastContainer` (react-toastify). A `GlobalShortcuts` component (also defined in `App.tsx`) wires up keyboard shortcuts via `useKeyboardShortcuts` (`src/lib/hooks/`) — things like opening Quick Add, toggling the backlog, cycling Planner/Calendar/Markdown mode, and cycling Today/Week/Inbox views.
+## Mocked and inert surfaces
 
-## Mobile vs. desktop shell
+Sidebar starts **signed-out** by default. Feedback, Sync & account, and About & pricing render
+exactly as designed but are inert — their handlers are deliberate no-ops
+(`// ponytail: Feedback/Sync/Pricing inert by decision`). `docs/design-behaviour-spec.html` is the
+copied behaviour reference listing every wired vs. `NOT WIRED` surface.
 
-One responsive tree covers both, gated by a single JS breakpoint: `useIsMobile()`
-(`src/lib/hooks/useMediaQuery.ts`) wraps `useMediaQuery('(min-width: 768px)')` and is the only
-place that reads the mobile/desktop boundary — components never hardcode `768`. Below `md`:
-bottom nav (`BottomNav`) plus bottom sheets. At `md+`: a left sidebar (`Sidebar`) plus centered
-dialogs. `Modal` and `QuickAddModal` share one sheet-on-mobile / dialog-on-desktop class contract
-from `src/lib/sheetPresentation.ts` rather than each re-deriving the shape, and `BacklogSidebar`
-reuses its backdrop. `TaskDetailSheet` is a bottom sheet below `md` too, but keeps its own classes
-because its desktop form is a right-edge drawer instead of a centered dialog. One documented
-exception: the planner/calendar time axis (`WeekColumn`,
-`UnifiedCalendar` week mode) scrolls horizontally instead of reflowing, since reflowing a time
-grid would break its temporal meaning.
+## Out of scope today
 
-### Testing on a real phone
-
-`npm run dev:mobile` runs `vite --host` and prints a `Network:` URL you can open on a phone on
-the same Wi-Fi, with HMR still working over LAN. Windows Firewall will prompt on first run — allow
-it on **Private** networks. Plain `http://` is fine since IndexedDB needs no secure context.
-Tauri-only APIs (updater, tray, autostart, global shortcuts) are simply absent in a browser tab —
-irrelevant unless you're testing something outside the responsive UI itself. Note that Expo does
-not apply here: Kyrou is React DOM inside Tauri v2, not React Native, so Expo Go can't load it —
-the Android path is Tauri Android.
+- **Mobile layout.** The design is desktop/web-window shaped; there is no mobile breakpoint tree,
+  bottom nav, or bottom sheets in the ported app.
+- **Sync, accounts, Supabase/Neon, Stripe.** Fully removed. Any future sync work needs a fresh
+  design against the localStorage store below — the old Dexie-first sync plan no longer applies.
+- **Markdown editing mode.**
 
 ## The golden data-flow rule
 
-There is exactly one path data takes, and components are not allowed to shortcut it:
+There is exactly one path data takes, and it is **synchronous**, not a reactive query layer:
 
 ```
-UI component
-   |  calls a typed function
+UI component method
+   |  calls a store function directly
    v
-repository function (src/db/repositories/*.ts)
-   |  reads/writes
+src/kyrou/store.ts (KyrouStore) — mutates its in-memory `data` object
+   |  writes the whole record as JSON
    v
-Dexie (IndexedDB) — table `tasks` or `projects`
-   |  useLiveQuery subscribes to changes
+localStorage['kyrou:data:v1']
+   |  subscribed components re-render (subs[] callbacks + forceUpdate),
+   |  or via a 'kyrou:*' CustomEvent on window
    v
-component re-renders automatically
+component re-renders
 ```
 
-Concretely: `src/db/repositories/taskRepository.ts` exports plain async functions (`getTasksByDate`, `moveTaskToDate`, ...) plus React hooks built on `useLiveQuery` from `dexie-react-hooks` (`useTodayTasks`, `useTasksForRange`). `src/db/repositories/projectRepository.ts` does the same for projects.
+`KyrouStore`'s shape:
 
-Recurring tasks reuse this same path rather than adding a second one: `src/db/repositories/recurrenceRepository.ts` materializes a `RecurrenceRule` into ordinary `tasks` rows ("occurrences") ahead of the visible range, so an occurrence is a normal task all the way down — see [Recurring Tasks](/features/recurring-tasks). Recurrence sync is not built yet; sync itself is currently disabled behind `SYNC_ENABLED`.
+```
+{ version, seq, days: { 'YYYY-MM-DD': [task] }, inbox: [task],
+  projects: [{ id, name, tone }], routines: [routine], routineLog: {}, routineRuns: [] }
+```
 
-**Components must never `import db from '@/db'` directly** — always go through a repository function. This keeps every read/write typed and testable in one place, and it means the UI never manually manages "loading" state or refetch logic — `useLiveQuery` re-runs the query whenever the underlying table changes.
+A task's identity lives in its day bucket — moving a task's date means moving it between buckets.
+Every save that actually changes the record pushes the previous snapshot onto an in-memory,
+session-only undo stack (50 deep); saves within 700ms sharing a coalesce key fold into one undo
+step. Undo/redo swap whole snapshots and fire `kyrou:restore`.
 
-### Every row belongs to an account
+**There is no repository layer, no `useLiveQuery`, and no IndexedDB.** Components import
+`src/kyrou/store.ts`'s named exports directly. The engine modules are a one-directional dependency
+chain, not a cycle: `store.ts` imports `recur.ts` (which itself imports nothing); `routines.ts`
+imports `store.ts`, `recur.ts`, and `undo.ts`; `projects.ts` imports `store.ts` — nothing imports
+back into `routines.ts` or `projects.ts`.
 
-Rows are not just "in the database" — each one carries an `ownerId` naming who it belongs to, and repository reads are scoped to whoever is currently signed in. A device can hold data for several accounts plus signed-out (guest) data at once; you only ever see the active one.
+**Ceiling, not a bug:** this is one localStorage record, not a database (see the `// ponytail:`
+note at the top of `src/kyrou/store.ts`). If it nears the ~5 MB localStorage limit, the upgrade
+path is a plugin-fs-backed file, not IndexedDB. There is deliberately no migration from any
+pre-port Dexie data.
 
-`ownerId` is never `null` — `null` is not a valid IndexedDB key, so a row holding it would silently drop out of every index. Signed-out data uses a `GUEST` sentinel instead. `src/db/scope.ts` is the single place that resolves the active scope (`activeScope()`, `useActiveScope()`) and exposes the scoped query helpers the repositories build on.
-
-Two consequences worth knowing when you write code here:
-
-- **Any `useLiveQuery` must include the active scope in its dependency array.** Dexie re-runs live queries when the *database* changes, not when the session does — so without the scope dependency, switching accounts leaves the old account's data on screen.
-- **Signing in never takes ownership of another account's data.** Signing in claims genuine guest rows only. Rows left behind by a previous account keep their owner, stay invisible, and reappear intact when that account signs back in.
-
-Zustand (`src/stores/uiStore.ts`, `src/stores/settingsStore.ts`) is for the *other* kind of state — things that aren't domain data: which modal is open, which task is selected, which view tab is active, unsaved-markdown tracking, keyboard-shortcut bindings. If it should survive a page reload and represents "your data," it belongs in Dexie. If it's transient UI state, it belongs in a store.
-
-## Active roadmap direction
-
-The post-v0.1 roadmap keeps Kyrou local-first. Optional accounts and sync are being migrated from Supabase to Neon, but the migration is incomplete and not cut over. Stripe, Android overlays, and Android widgets remain planned work.
-
-- Kyrou stays account-free by default; local-only use remains permanent.
-- Planned Sync entry points live in the shell: desktop sidebar and mobile top app bar. **Settings → Sync** manages the account and sync state after discovery.
-- OAuth starts only after the user chooses Sync and presses **Continue with Google**. Native OAuth uses the system browser, not an embedded WebView.
-- Planned sync remains Dexie-first: local writes update IndexedDB immediately, then a durable outbox and merge layer converge with Neon later. The client uses Neon Managed Auth and the Data API through `@neondatabase/neon-js`; raw SQL lives in `database/migrations/`.
-- Planned Sync status has one shared source for desktop sidebar, mobile top app bar, Settings -> Sync, and Sync Center.
-- Signing out keeps local rows usable, quarantines pending sync data to the origin account, and never auto-attaches that data to a different account.
-- Google OAuth starts through the official `@neondatabase/auth` `createAuthClient().signIn.social()` API, and Kyrou opens the returned provider URL. Browser OAuth returns directly to the web origin. Desktop OAuth returns through the deployed `workers.dev` Worker to `kyrou://auth` in production or `kyrou-dev://auth` in development.
-- Each desktop attempt uses a random, single-use `oauth_attempt` nonce valid for at most ten minutes. The Worker allowlists and relays only verifier/error fields and the nonce; the client rejects unsolicited, mismatched, expired, or replayed callbacks before using Neon's `getSession()` verifier flow.
-- Neon SDK persistence is now the only session mechanism; the custom Tauri auth file is gone. Browser Google OAuth is verified live, and desktop-development OAuth is verified end to end through the system browser, deployed Worker, `kyrou-dev://` launch, and verifier redemption. The browser tab left after the native handoff must be closed manually because browser security prevents reliable automatic closure. SQL/RLS and desktop restart-persistence checks remain outstanding. Account deletion is hidden and deferred until Neon documents a supported server-side contract.
-- Free local planning and basic task/project sync remain free. Stripe entitlements are planned only for later paid features, and paid account deletion must cancel/reconcile Stripe before profile data is purged.
-- PC/Android overlay/reminder work and Android widgets are future platform batches. iOS is deferred to feasibility work and is not part of the current release pipeline.
+Zustand (`src/tauri/settingsStore.ts`) is unrelated to `KyrouStore` — it holds only three desktop
+preferences (`startOnStartup`, `minimizeToTray`, `updateCheckOnStartup`), never domain data.
 
 ## Dates and times are strings, never `Date`
 
-Persisted fields use plain strings:
+Persisted fields use plain strings, unchanged by the port:
 
 - Dates: `'YYYY-MM-DD'` (e.g. `'2026-07-14'`)
 - Times: `'HH:mm'` (e.g. `'09:30'`)
 
-No `Date` objects are stored on a `Task` or `Project`. This sidesteps timezone bugs entirely — a task scheduled for a date is scheduled for that literal calendar date, not a UTC instant. Helpers for formatting/parsing live in `src/lib/date.ts`, `src/lib/time.ts`, and `src/lib/duration.ts`.
+No `Date` objects are stored on a task. This sidesteps timezone bugs entirely.
 
 ## Where to go next
 
-- Building or editing a specific screen -> the **Features** section in the sidebar.
+- Building or editing a specific screen -> the **Features** section in the sidebar (each page
+  notes what changed with the design port).
 - Changing colors, spacing, or a component's look -> [Editing -> Styling](/editing/styling).
-- Adding a field to a task, or a new feature folder -> [Editing -> Features](/editing/features).
 - Cutting a release -> [Release](/release).

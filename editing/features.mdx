@@ -1,74 +1,85 @@
 ---
 title: Editing Features
-description: The repository pattern for adding or changing task/project data, end to end.
+description: The current workflow for adding or changing a page/panel/modal after the 2026-09-04 design port.
 ---
 
-## The repository pattern, end to end
+## What changed
 
-Every piece of task/project data flows through the same chain (see [Orientation](/orientation) for the diagram). Concretely, that means changes to what a `Task` *is* touch a predictable, small set of files, always in the same order:
+The pre-port workflow (add a field to `src/types/task.ts`, bump the Dexie schema in
+`src/db/index.ts`, add a typed function to a repository, consume it via a `useLiveQuery` hook, put
+new UI under `src/features/{feature}/`) no longer applies. That whole stack — `src/types/`,
+`src/db/`, `src/stores/`, `src/features/` — was deleted in the 2026-09-04 design port (see
+[Orientation](/orientation)). This page describes the current workflow.
 
-1. **`src/types/task.ts`** — the shared TypeScript shape (`Task`, `Project`, `Priority`, `TaskStatus`). Add your new field here first so the compiler tells you everywhere else that needs updating. Subtasks are plain `Task` rows with `parentId` set — there is no separate `SubTask` type.
-2. **`src/db/index.ts`** — the Dexie schema. Add a new `db.version(N).stores({...})` block if the field needs to be indexed/queryable; if it's just an extra property on the object (not indexed), you may not need a schema bump at all — Dexie stores whatever shape you give it, only indexed fields need declaring in `.stores(...)`.
-3. **`src/db/repositories/taskRepository.ts`** (or `projectRepository.ts`) — add/update the typed function that reads or writes the field. This is the only file allowed to call `db.tasks.*` / `db.projects.*` directly.
-4. **The component** — consume the field via a `useLiveQuery`-backed hook from the repository (e.g. `useTodayTasks()`), never via a raw Dexie call.
+## The current shape, end to end
 
-### Worked example: adding a `dueTime` field to Task
+Every page/panel/modal in the app is a **mechanical port** of one file in
+`design-import/kyrou-app/` — Seji's hand-built Claude Design app is the source of truth, not a
+spec you improvise from. There is no "add a new feature folder" step; new UI work starts in the
+Claude Design project, not in code.
+
+1. **The design file** — `design-import/kyrou-app/<Name>.dc.html` is what the ported component's
+   markup, styling, and behavior must match one-to-one. Never invent markup that isn't there.
+2. **The component** — `src/app/<Name>.tsx`, a React class component (`extends Component<Props,
+   any>`), plus a sibling `src/app/<Name>.css` when the source file's `<style>` block was
+   non-empty. `render()` reads `const v: any = { ...this.props, ...this.renderVals() }`.
+3. **Data** — read and write through `src/kyrou/store.ts`'s exported `KyrouStore` object
+   directly (e.g. `KyrouStore.dayTasks(dayKey)` to read a day's tasks, `KyrouStore.setTasks(dayKey,
+   items)` to write them back), not through a repository or a reactive query hook. To re-render on
+   every store change, subscribe with `KyrouStore.subscribe(fn)` (returns an unsubscribe function)
+   or listen for the `kyrou:*` `CustomEvent`s it dispatches on `window` (`kyrou:history`,
+   `kyrou:restore`, `kyrou:toast`, ...). `KyrouStore` is a single synchronous module over one
+   `localStorage` record (`kyrou:data:v1`) — there is no async repository layer to route through.
+4. **Shared behavior** — reuse the existing engine modules in `src/kyrou/*` (recurrence, routines,
+   projects, parsing, undo/toast, theming, etc.) instead of re-implementing logic the design
+   already has ported. Reuse `src/ds/*` for shared UI (`Badge`, `Button`, `Checkbox`, etc.).
+
+### Worked example: the real toggle-and-write-back pattern
+
+`src/app/Today.tsx`'s `_setDone(id)` (line 3717) is the real pattern a ported page uses to flip a
+task's `done` flag — it mutates local state, not the store, directly:
 
 ```ts
-// 1. src/types/task.ts
-export interface Task {
-  // ...existing fields
-  dueTime: string | null   // 'HH:mm', separate from startTime
+// src/app/Today.tsx
+_setDone(id: any) {
+  this.setState((st: any) => ({
+    items: st.items.map((x: any) => x.id === id ? Object.assign({}, x, { done: !x.done }) : x)
+  }));
 }
 ```
 
-```ts
-// 2. src/db/index.ts — only needed if you want to query/index by it;
-// otherwise skip straight to step 3 and let existing rows default via
-// your repository's create/update functions.
-db.version(4).stores({
-  tasks: '++id, date, status, projectId, order, priority, parentId', // unchanged if not indexed
-  projects: '++id, name, emoji',
-})
-```
+The store write isn't inline in that method. `Today`'s `componentDidUpdate` diffs
+`this.state.items` against the previous render and, when they differ, calls
+`KyrouStore.setTasks(this.state.dayKey, items)` — so the write happens once state settles, not on
+every keystroke of a mutation. A simpler new page without that diff/write-back split can just call
+`KyrouStore.setTasks(this.props.day, items)` directly inside its own toggle method —
+`this.props.day` is `Today`'s real `day?: string` prop.
 
-```ts
-// 3. src/db/repositories/taskRepository.ts
-export async function setDueTime(id: number, dueTime: string | null) {
-  return updateTask(id, { dueTime })
-}
-```
+If `Today.dc.html` doesn't have the behavior you're adding, it isn't a port anymore — go add it to
+the Claude Design project first, then re-port the affected file, rather than diverging from the
+design in code alone. Any deliberate, disclosed deviation from the design source gets a
+`// PORT-NOTE:` comment.
 
-```tsx
-// 4. component — e.g. TaskDetailSheet.tsx
-const tasks = useTodayTasks()
-// tasks[i].dueTime is now typed and available
-```
+## Store vs. desktop settings
 
-Note the `// ponytail:` comment style already used in the codebase (e.g. in `taskRepository.ts` and `globalHotkey.ts`) for deliberate simplifications — leave a similar note if you're taking a shortcut with a known ceiling.
+`src/kyrou/store.ts` (`KyrouStore`) holds all domain data — tasks, inbox, projects, routines,
+routine log/runs, undo/redo history. `src/tauri/settingsStore.ts` is a small Zustand store that
+holds only three desktop preferences (`startOnStartup`, `minimizeToTray`, `updateCheckOnStartup`)
+— never domain data. If it's a task/project/routine, it belongs in `KyrouStore`; if it's a desktop
+toggle, it belongs in `settingsStore`.
 
-## Store vs. domain state
+## Tests
 
-`src/stores/uiStore.ts` and `src/stores/settingsStore.ts` are Zustand stores. They hold **ephemeral UI state only**: which modal is open, the selected task ID, the current view tab, whether markdown has unsaved edits, keyboard-shortcut bindings, theme preference. They must never hold task/project data — that always lives in Dexie and is read via a repository hook. A quick test: "would losing this on page reload be fine, or would the user lose real data?" UI state -> store. Real data -> Dexie.
-
-## Feature-folder convention
-
-New feature work goes under `src/features/{feature}/`, with UI split as:
-
-```
-src/features/{feature}/
-  {Feature}Page.tsx        top-level page/route target (if it's a routed screen)
-  components/              feature-specific components
-  hooks/                    feature-specific hooks (if any)
-  lib/                      feature-specific non-React logic (if any)
-```
-
-Look at an existing feature (e.g. `src/features/quickadd/`) as the template — components in `components/`, parsing logic in a flat file (`nlpParser.ts` actually lives in shared `src/lib/` since other features could reuse it), tests colocated next to the file they cover (`QuickAddModal.test.ts`).
-
-Shared, non-feature-specific UI (buttons, modals, switches) belongs in `src/components/ui/`, not inside a feature folder — see [Editing -> Styling](/editing/styling) for that layer.
+Render-smoke tests live in `src/app/__tests__/` (e.g. `pages12.test.tsx`, `modals13.test.tsx`).
+`src/app/__tests__/seed.ts` seeds `kyrou:data:v1` in `localStorage` before each test file runs.
+Because `store.ts` reads `localStorage` at module-evaluation time, any component under test that
+touches the store must be **dynamically imported after `seed()` runs**, not statically imported at
+the top of the file — a static import sees a blank store.
 
 ## Before considering a change done
 
-- `npx vitest run` — tests pass
+- `npm run test` (`vitest run`) — tests pass
 - `npm run lint` — oxlint clean
-- `npm run build` — `tsc -b && vite build` succeeds (this is also where a missed Dexie schema/type update usually surfaces as a type error)
+- `npm run build` — `tsc -b && vite build` succeeds
+- `grep -n "window\.Kyrou\|{{" src/app/<YourFile>.tsx` — empty, aside from the declared window
+  flags in `src/global.d.ts` (a leftover `{{ }}` or `window.KyrouX` means the port missed a spot)

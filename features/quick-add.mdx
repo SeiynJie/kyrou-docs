@@ -3,6 +3,13 @@ title: Quick Add
 description: The fast-entry modal that parses date, time, priority, project, tags, and subtasks from plain text.
 ---
 
+<Note>
+**2026-09-04 design port:** Quick Add is now `src/app/QuickAddModal.tsx`, and parsing is the
+design's own grammar in `src/kyrou/parse.ts` — `chrono-node` was removed, so date/time parsing is
+no longer chrono-node-based. Mobile layout and sync/accounts are out of scope in the current
+build. The `src/lib/nlpParser.ts` references below describe the pre-port implementation.
+</Note>
+
 ## What it does
 
 Quick Add is the fast-entry modal (opened globally via a keyboard shortcut) where you type a task in plain English and Kyrou parses out the date, time, duration, priority, project, tags, subtasks, and status from the text as you type — no separate fields to fill in.

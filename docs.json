@@ -33,6 +33,7 @@
           "features/today",
           "features/calendar",
           "features/week",
+          "features/routines",
           "features/inbox-projects",
           "features/recurring-tasks",
           "features/quick-add",

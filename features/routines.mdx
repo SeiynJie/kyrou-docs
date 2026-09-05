@@ -3,6 +3,14 @@ title: Guided routines
 description: Create reusable local workflows and execute them one step at a time.
 ---
 
+<Note>
+**2026-09-04 design port:** Routines are now `src/app/Routines.tsx` and friends
+(`RoutineEditor.tsx`, `RoutineRunnerPanel.tsx`, `RoutineRunner.tsx`, `RunDetail.tsx`,
+`StepDetail.tsx`), backed by `src/kyrou/routines.ts` and stored in
+`src/kyrou/store.ts`'s single `localStorage` record — not IndexedDB. Mobile layout and
+sync/accounts are out of scope in the current build.
+</Note>
+
 ## Library
 
 Open **Routines** from the desktop sidebar to see reusable workflows. **New routine**

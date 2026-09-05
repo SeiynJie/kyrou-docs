@@ -3,6 +3,19 @@ title: Inbox & Projects
 description: Where undated backlog tasks and project management live together in Kyrou.
 ---
 
+<Note>
+**2026-09-04 design port:** Inbox and Project Detail are now `src/app/Inbox.tsx` /
+`src/app/ProjectDetail.tsx`, ported class components reading/writing
+`src/kyrou/store.ts`'s single `localStorage` record — there is no Dexie, no
+`projectRepository.ts`, and no `src/db/` or `src/types/task.ts` anymore. Mobile layout and
+sync/accounts are out of scope in the current build. The file-path and Dexie-schema details below
+describe the pre-port implementation.
+
+**2026-09-05 fix:** Task Detail picker choices (status, priority, duration, project) now persist on
+the pick that made them, picking **Inbox** in the project picker clears the project, and tasks whose project is
+`null` or the string `'Inbox'` both appear under the Inbox section.
+</Note>
+
 ## What it does
 
 The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and project management live together: a sortable list of tasks not yet scheduled to a date, grouped and organized by project, plus the ability to create/edit projects (name, color, emoji).
