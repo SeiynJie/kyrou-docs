@@ -31,11 +31,10 @@ This is enforced by `.github/workflows/ci.yml`, which runs `npm ci` on Node 24 o
 
 ## Cutting a release
 
-These steps describe the current Windows desktop release pipeline. Planned Android release work belongs to `docs/roadmap/10-android-pc-distribution.md`; it must be documented as planned until an Android artifact is actually built, signed, and verified.
+These steps describe the current Windows desktop release pipeline (x64, x86, ARM64). Planned Android release work belongs to `docs/roadmap/20-release-app.md`; Android CI is currently paused (see below) and must be documented as planned until an Android artifact is actually built, signed, and verified.
 
-1. Rewrite `RELEASE_NOTES.md` for this release — it becomes the public GitHub Release body verbatim, so write it for users: what changed, why it was wrong before, and what's still rough. Also bump the release version in `src-tauri/tauri.conf.json` → `"version"`.
-   - `package.json` stays at `0.0.0` in this repo and is **not** part of Kyrou's release versioning.
-   - `src-tauri/Cargo.toml` has drifted and is not used for release versioning either; the version guard and `latest.json` read `tauri.conf.json` only.
+1. Rewrite `RELEASE_NOTES.md` for this release — it becomes the public GitHub Release body verbatim, so write it for users: what changed, why it was wrong before, and what's still rough. Bump the version together in all four files: `src-tauri/tauri.conf.json` → `"version"`, `src-tauri/Cargo.toml`, `package.json`, and `package-lock.json` (via `npm install`, never hand-edited).
+   - `src-tauri/tauri.conf.json` is still the one that matters for release mechanics — the tag guard and `latest.json` read it only — but the other three are now kept in sync with it rather than left to drift.
 2. Commit the notes and version bump:
    ```bash
    git add RELEASE_NOTES.md src-tauri/tauri.conf.json
@@ -50,9 +49,9 @@ These steps describe the current Windows desktop release pipeline. Planned Andro
    ```
 5. `.github/workflows/release.yml` picks up the `v*` tag:
    1. Guards that the tag matches `version` in `src-tauri/tauri.conf.json`, failing the build if they disagree. A mismatch would ship an updater manifest advertising a version the installer never installs, so the app would re-prompt forever.
-   2. Runs `tauri-action` in **build-only** mode, producing a **signed** NSIS installer and its `.sig` (signing uses the `TAURI_SIGNING_PRIVATE_KEY` secret, matched against the public key embedded in `src-tauri/tauri.conf.json`).
-   3. **Generates `latest.json`** from the built `.exe`, its `.sig`, and the config version. `tauri-action` only emits this manifest when it publishes a release *itself*, which it does not do here — so the workflow builds it.
-   4. `softprops/action-gh-release` publishes the installer, `.sig`, and `latest.json` as a GitHub Release on **`SeiynJie/kyrou-releases`** (public) using the `KYROU_RELEASES_TOKEN` secret — the source repo stays private. `target_commitish` is pinned to that repo's `main`, since the default (this repo's commit SHA) does not exist there and the API rejects it with `400 Invalid target_commitish parameter`. Its notes body comes from `body_path: RELEASE_NOTES.md` — the file is read from the tagged commit, so `RELEASE_NOTES.md` must be updated *before* the tag is cut (step 1 below). Prior to v0.1.13 the body was hardcoded inline in the workflow, which is how v0.1.12 shipped notes describing the markdown editor instead of its own changes; that published release page was left as-is.
+   2. A `build` matrix job runs `tauri-action` in **build-only** mode for three Windows targets — **x86_64**, **i686** (32-bit), and **aarch64** (ARM64), all MSVC — producing a **signed** NSIS installer and its `.sig` per target (signing uses the `TAURI_SIGNING_PRIVATE_KEY` secret, matched against the public key embedded in `src-tauri/tauri.conf.json`), uploaded as build artifacts.
+   3. A `publish` job downloads those artifacts and **assembles `latest.json`** with three platform keys — `windows-x86_64`, `windows-i686`, `windows-aarch64` — each pointing at its own installer/sig/version. `tauri-action` only emits this manifest when it publishes a release *itself*, which it does not do here — so the workflow builds it.
+   4. `softprops/action-gh-release` publishes all three installers, their `.sig` files, and `latest.json` as a GitHub Release on **`SeiynJie/kyrou-releases`** (public) using the `KYROU_RELEASES_TOKEN` secret — the source repo stays private. `target_commitish` is pinned to that repo's `main`, since the default (this repo's commit SHA) does not exist there and the API rejects it with `400 Invalid target_commitish parameter`. Its notes body comes from `body_path: RELEASE_NOTES.md` — the file is read from the tagged commit, so `RELEASE_NOTES.md` must be updated *before* the tag is cut (step 1 below). Prior to v0.1.13 the body was hardcoded inline in the workflow, which is how v0.1.12 shipped notes describing the markdown editor instead of its own changes; that published release page was left as-is.
 
    <Warning>
    Always cut the tag from `main`. The tag decides what gets built, so a tag on a feature branch silently ships a release missing everything on `main`.
@@ -60,11 +59,29 @@ These steps describe the current Windows desktop release pipeline. Planned Andro
 6. The in-app updater (`src/tauri/updater.ts` — moved here by the 2026-09-04 design port; formerly `src/features/settings/lib/updater.ts`) picks up the new release automatically — it polls `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`, which the release workflow just published to.
 7. A `publish-docs` job (`needs: release`) also runs, invoking `.github/workflows/docs-publish.yml` via `workflow_call` — so cutting a release also mirrors the current `docs-site/` into `kyrou-docs` and refreshes the live Mintlify site, in addition to the normal on-push trigger. See [Deploy](/deploy) for the mirror mechanics.
 
-## Planned Android/PC release direction
+## Installed binary name
 
-The roadmap adds Android and broader PC distribution after responsive accessibility work. That future work must preserve the current Windows NSIS installer/updater path while adding Android build/signing checks, platform gates for native APIs, and release notes that distinguish Windows, PC, Android, and shared artifacts.
+`src-tauri/tauri.conf.json` and `src-tauri/tauri.dev.conf.json` set `"mainBinaryName": "kyrou"`, so
+the installed exe is `kyrou.exe`, not `app.exe` (the Cargo package name stays `app`). This matters
+for release verification and support: window-matching tools (AutoHotkey `ahk_exe`, Task Manager,
+antivirus allowlists) now key off `kyrou.exe`.
 
-Do not describe CI as already building Android until the Android job exists and a signed/dry-run artifact has been verified. iOS release work is deferred to Batch 20 and is not part of the current Windows pipeline.
+<Warning>
+`tauri_plugin_autostart` registers the exe path when "Start Kyrou on computer startup" is enabled, not on every
+boot. A user who had autostart on before updating past this rename has it pointed at the
+now-missing `app.exe` and must toggle Settings → Startup → "Start Kyrou on computer startup" off, then back on,
+once after updating.
+</Warning>
+
+## Android CI paused
+
+Android CI (the release job and the PR debug build) was removed in v0.3.1, pending the responsive/accessibility work it depends on. Restore it by reverting that commit when that work lands. `docs/android-setup.md` and `docs/android-signing.md` are kept as-is for when it comes back.
+
+Do not describe CI as already building Android until that job exists again and a signed/dry-run artifact has been verified. iOS release work is deferred to Batch 20 and is not part of the current Windows pipeline.
+
+## Data safety on update
+
+All user data lives in the WebView2 profile at `%LOCALAPPDATA%\app.kyrou.desktop\EBWebView\`, keyed on the `identifier` in `src-tauri/tauri.conf.json`. As long as that identifier doesn't change, updating to a new version keeps all existing data — installers just replace the binary, they don't touch the profile directory. Never change `identifier` without a migration plan; the v0.3.0 Kairo→Kyrou rename is the one case where the identifier changed and every existing install started with fresh, empty data.
 
 ## Legacy env vars still injected (harmless, unused)
 

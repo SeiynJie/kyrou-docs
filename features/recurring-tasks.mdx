@@ -10,6 +10,10 @@ table, `recurrenceRepository.ts`, and `SYNC_ENABLED` flag referenced below no lo
 of any kind was removed). Mobile layout and sync/accounts are out of scope in the current build.
 Verify exact occurrence-generation behavior against `design-import/kyrou-app/kyrou-recur.js`
 before assuming the pre-port semantics described below still hold in every edge case.
+
+**2026-09-09:** Quick Add and Task Detail titles now accept recurrence patterns (`every mon wed`, 
+`every 2 weeks`, `every 15th`, etc.) and emit a structured `rule` that matches the UI's repeat 
+picker — both surfaces now express the same grammar.
 </Note>
 
 ## What it does

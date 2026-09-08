@@ -58,6 +58,11 @@ The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and projec
   `projectRepository.ts` (only one project can be default at a time; setting one clears the rest).
   Quick Add assigns new tasks to the default project when no `#project` token is typed — see
   [Quick Add](/features/quick-add).
+- **Project colour picker.** When creating or editing a project in `CreateProjectModal`, clicking the
+  colour field opens a `ColorGrid` popover showing a 12×5 grid of colour swatches (60 total). Keyboard:
+  arrow keys navigate 2D (clamped), Home/End jump to first/last, Enter picks, Esc closes. A footer row
+  offers "Reset colour" (hotkey R) to cycle to the next free base hue. The selected colour is reflected
+  in the project's card badge and tint throughout the app.
 - Per-row action buttons are reachable via Tab but are not yet in a horizontal roving group —
   deferred, not yet Left/Right navigable like the rest of the page.
 

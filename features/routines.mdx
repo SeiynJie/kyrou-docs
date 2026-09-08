@@ -9,6 +9,25 @@ description: Create reusable local workflows and execute them one step at a time
 `StepDetail.tsx`), backed by `src/kyrou/routines.ts` and stored in
 `src/kyrou/store.ts`'s single `localStorage` record — not IndexedDB. Mobile layout and
 sync/accounts are out of scope in the current build.
+
+**2026-09-08:** The runner panel gains a **Skip today / Unskip today** action (`S`), available
+when idle with no pending run; a skipped day's card strikes through the same way a done one does.
+A routine due today with no start time now shows as an unscheduled row on Today/Week instead of
+staying library-only. The routine editor's floating time picker is gone: **TIME** is its own row —
+Start is typeable (same clock grammar as Quick Add), End is read-only (start + the sum of the
+steps' minutes, labeled "auto from steps"), and its hour format now follows the app's
+Settings → Appearance hour-format setting instead of always showing 24h. Marking a routine
+**Didn't do** or **Skip today** now strikes its calendar block through as well as its card, and
+those days show up in **Recent runs** as non-expandable `DIDN'T DO` rows. "Didn't do" and "Skip
+today" were two names for the same state and are now one: the action reads **Skip today** /
+**Unskip today**, the state reads `DIDN'T DO`, and it counts against the completion rate and
+streak. Old skipped days migrate automatically. Today's routine context menu matches the runner
+panel's hotkeys — `S` skips or unskips, `V` opens the routine in Routines — and both call that
+action **Open in Routines**.
+
+**2026-09-09:** A routine card's repeat label now describes the routine's real rule — "Every 2 days",
+"Every Mon and Wed", "Every month on the 15th" — instead of always reading `daily`. Opening a
+routine in Task Detail shows the same text in its REPEAT row.
 </Note>
 
 ## Library

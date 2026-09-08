@@ -9,6 +9,17 @@ description: How Kyrou ships as a signed Windows desktop app by wrapping the web
 toasts now go through the design's own `kyrou:toast` event instead of `react-toastify`. Mobile and
 sync/accounts remain out of scope. The rest of this page's Tauri/Rust behavior is unaffected by
 the port.
+
+**2026-09-08:** `mainBinaryName: "kyrou"` in `tauri.conf.json` / `tauri.dev.conf.json` makes the
+installed exe `kyrou.exe`, not `app.exe` (the Cargo package name stays `app`). Existing users with
+"Start Kyrou on computer startup" already enabled must toggle it off and back on once after updating — the
+`autostart` plugin registered the old `app.exe` path, which no longer exists.
+
+**2026-09-08:** The custom title bar's window controls (Minimize / Maximize-Restore / Close) can no
+longer be pushed off-screen by wide page content — `TopBarShell` now clips its children inside their
+own shrinking wrapper and `WindowControls` never shrinks (`flex: 0 0 auto`). This mattered on a
+narrow window with the sidebar open, where the controls could previously scroll out of view,
+leaving no way to close the window from the title bar.
 </Note>
 
 ## What it does

@@ -8,11 +8,59 @@ description: The fast-entry modal that parses date, time, priority, project, tag
 design's own grammar in `src/kyrou/parse.ts` — `chrono-node` was removed, so date/time parsing is
 no longer chrono-node-based. Mobile layout and sync/accounts are out of scope in the current
 build. The `src/lib/nlpParser.ts` references below describe the pre-port implementation.
+
+**2026-09-08:** Both plain `Enter` and `Ctrl`/`Cmd`+`Enter` create the task now — `Enter` still
+picks the highlighted typeahead item first if one is open, but `Ctrl`/`Cmd`+`Enter` always submits
+even while the typeahead is open. The modal's footer reads "Enter creates · Esc cancels".
+
+**2026-09-08:** One clock grammar (`src/kyrou/duration.ts`'s `KyrouDuration`) now backs every
+clock/duration field in the app, including Quick Add. Quick Add also now always shows and writes a
+target day; see "Target day" below.
+
+**2026-09-09:** Todoist/Things-style NLP expansion: smart time ranges (`8-6pm` → `8am-6pm`), 
+relative dates (`in 3 days`, `next mon`, `tonight`), section words (`@morning`, `this evening`), 
+and recurrence patterns (`every mon wed`, `every 2 weeks`, `every 15th`) now parse — see the 
+grammar table below.
 </Note>
 
 ## What it does
 
 Quick Add is the fast-entry modal (opened globally via a keyboard shortcut) where you type a task in plain English and Kyrou parses out the date, time, duration, priority, project, tags, subtasks, and status from the text as you type — no separate fields to fill in.
+
+## Current grammar (`src/kyrou/parse.ts` + `src/kyrou/duration.ts`)
+
+| Form | Meaning | Examples |
+|---|---|---|
+| **Time** | Single time | `4pm`, `4:00pm`, `4p`, `1230`, `@1230` (bare digits need `@`); `noon`, `midnight`; `at 9` / `@9` |
+| **Time range** | Start + duration | `9-10am`, `8am to 630pm`, `8-630pm` (smart meridiem: `8-6pm` → `8am-6pm`), `0800-1730`, `10:30am to 9am` (wraps past midnight); needs `@`, minutes, or am/pm on one side or reads as plain text |
+| **Date (month-day)** | Specific date | `@sep 25 2027`, `@sep 25, 2027`, `@25 sep 2027`, `@sep 25th` |
+| **Date (slash/ISO)** | Specific date | `@9/25`, `@9/25/2027`, `@2027-09-25` |
+| **Date (relative)** | Offset from today | `in 3 days`, `in 2 weeks`, `in 1 month`; `next mon`, `next month` |
+| **Date (context)** | Today offset | `today`, `tomorrow`, `tonight` (today evening), `this weekend` |
+| **Section** | Time of day | `@morning`, `@afternoon`, `@evening`, `this morning`, `this afternoon`, `this evening`, `tonight` (today evening) — bare `morning`/`afternoon`/`evening` never parse, so "Morning Routine" keeps its title |
+| **Duration** | Task length | `2h`, `1h 30m`, `45 minutes`, `for 2h`, `~2h` |
+| **Priority** | Task urgency | `p1–p4`, `!1–!3`, `!!!` / `!!` / `!` (Todoist/Things shorthands) |
+| **Project** | Task owner | `#ProjectName` |
+| **Recurrence** | Repeat pattern | `every mon wed fri`, `every 2 weeks`, `every other day`, `every 15th`, `every weekend`, `yearly` |
+| **Subtasks** | Child tasks | `-- task a / task b` |
+
+Date chips show the year only when it isn't the current year. `KyrouParse.clock` (text →
+minutes) and `KyrouParse.range` are exported so other engines (Task Detail, Routine Editor) parse
+the same grammar.
+
+## Target day
+
+Quick Add always shows — and the created task always carries — a target day, even when nothing was
+typed. `window.KyrouQuickAddDay` is a hook the currently-active page installs: Today (not embedded
+in a Week column) answers with its own day; Week answers with the focused column's day, or today
+when no column is focused; Inbox installs nothing, so its tasks stay undated unless a date is typed.
+With no date chip typed, the modal shows an implied, unremovable chip (dimmed, no × to clear) naming
+that default day, and the submitted patch carries that date.
+
+This also fixes handler ownership for the create event: previously, opening Quick Add from Week with
+no day column focused created nothing, because no mounted `Today` column was listening. Now Week
+itself picks up the event when no column is focused, and writes the task straight into that day's
+store record.
 
 ## Files tied to it
 

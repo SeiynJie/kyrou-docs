@@ -17,7 +17,7 @@ Tokens live in `src/ds/tokens/*.css`, imported once globally by `src/main.tsx`:
 | File | Purpose |
 |---|---|
 | `colors.css` | Every color custom property (`--ink-*` neutral ramp, `--sand-*` accent, `--azure-*`, `--label-*`, semantic aliases like `--bg-app`, `--text-primary`, `--accent`) |
-| `typography.css` | Font-size/weight/line-height scales |
+| `typography.css` | Font-size/weight/line-height scales. `--fs-*` values are `rem` (pixel-identical at the default 16px root), so text scales with the user's OS/browser text-size setting; `--lh-*`/`--fw-*` and the spacing/radius tokens are unaffected and stay unitless/`px` — layout does not scale, only text does |
 | `fonts.css` | `--font-display` / `--font-sans` (Space Grotesk) and `--font-mono` (JetBrains Mono), loaded from `@fontsource/*` packages — no Google Fonts `<link>` |
 | `spacing.css` | Spacing scale |
 | `effects.css` | Shadows and similar |
@@ -41,6 +41,21 @@ script applies the persisted theme before first render so there's no flash.
 `src/ds/tokens/*.css`, it isn't part of the current design system — check
 `design-import/kyrou-app/` (canonical) or `design-import/kyrou-ds/` (reference; the app zip's
 compiled `_ds_bundle.js` wins on any conflict) before inventing one.
+
+**Rule: never write a literal px font-size.** Always a `--fs-*` token or a `--type-*` role. This
+was enforced retroactively by converting the three remaining hardcoded px font-sizes in ported
+code (`Routines.tsx` x2, `RunDetail.tsx`) to their matching `--fs-*` token.
+
+**Rule: never restore a scroll position with a plain `el.scrollTop = v` assignment.**
+`src/kyrou/kyrou-scroll.css` sets `scroll-behavior: smooth` on every element (`html, body, *`), so
+that assignment doesn't jump — it queues an animation, and a reflow that clamps `scrollTop` back to
+`0` in the same tick (e.g. briefly collapsing an element to `height: 'auto'` to measure it) wins that
+race every time. Use `el.scrollTo({ top: v, behavior: 'instant' })` instead, which opts out of
+smooth-scrolling per-call. This bit `NoteField.autosize()` and `NoteBubble`'s equivalent exactly:
+measuring the note textarea un-overflowed the host panel, the browser clamped its scroll position to
+0, and only the instant `scrollTo` restore reliably wins the race — a plain `scrollTop =` assignment
+looked correct in the diff but silently threw the panel back to the top on every keystroke. Any
+future code that restores a scroll position anywhere in the app is exposed to the same trap.
 
 ## Inline styles: the `css()` helper
 

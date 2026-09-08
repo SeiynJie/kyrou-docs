@@ -9,6 +9,17 @@ day column (`embedded={true}`), both reading/writing `src/kyrou/store.ts`'s sing
 record. There is no Dexie or `uiStore` (Zustand) in the current build. Mobile layout and
 sync/accounts are out of scope. The source of truth for exact behavior is now
 `design-import/kyrou-app/Week.dc.html`.
+
+**2026-09-08:** Week remembers the last day you scrolled to (`localStorage['kyrou:week:day']`) and
+restores it as-is on the next visit — the old "more than 7 days stale, snap back to today" clamp
+is gone. Only the Today toolbar button and the calendar popover navigate to today now.
+
+**2026-09-08:** Picking a date in the `Shift+G` calendar popover (`Enter` or `T`) now centres that
+day exactly like `Shift+N`'s jump-to-today, instead of only scrolling it into view. Quick Add's
+target day now follows the focused column (or today when no column is focused) via
+`window.KyrouQuickAddDay` — see [Quick Add → Target day](/features/quick-add). Week itself also
+now owns task creation when no column is focused, so opening Quick Add from Week with nothing
+focused no longer creates nothing.
 </Note>
 
 ## What it does
@@ -42,7 +53,7 @@ Calendar mode within Week reuses `src/features/calendar/UnifiedCalendar.tsx` wit
 - **Collapse all / Expand all** is one header dropdown (Expand/Collapse all sections, Expand/Collapse all cards) acting on every visible card across all columns; right-clicking empty planner space opens the same four actions in a right-click menu — same source as Today.
 - **Subtask keyboard nav works here too.** `Up`/`Down` step into an expanded card's subtask chips before moving to the next card in the column, same as Today — see [Today → Keyboard navigation & select mode](/features/today).
 - **`D` toggles done on the highlighted task** here as well, subtasks included, without opening the detail sheet — see [Today](/features/today).
-- **`Shift+N` scrolls to Now here too**, scrolling to today's column in the week planner and also selecting it as the active column with a focused task, so `Up`/`Down`/`Alt+Left`/`Alt+Right` continue from there (Calendar mode keeps its own Now-button behavior — see [Calendar](/features/calendar)).
+- **`Shift+N` goes to now here too**, centring today's column and making it the active one. In Planner mode it then lands on that day's row nearest the clock — the same rule the Today page uses, running block first, then nearest start, falling back to the section header covering now — selecting and pulsing it so `Up`/`Down`/`Alt+Left`/`Alt+Right` continue from there. Calendar mode keeps its own Now-button behavior and centres the rail without selecting a block — see [Calendar](/features/calendar) and [Today](/features/today).
 
 ## Where to start editing
 
