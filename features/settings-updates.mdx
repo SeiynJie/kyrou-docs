@@ -51,6 +51,17 @@ On mobile, Settings is reachable from the bottom navigation as a real tab-bar ac
 
 <Note>Because `Modal` is not portaled, a nested dialog opened from inside Settings (`KeypressCapture`, while rebinding a shortcut) renders inside Settings' own DOM container. `useRovingPanel` explicitly ignores keys that originate inside a nested `role="dialog"` so the outer Settings panel doesn't also try to interpret them as roving-nav input.</Note>
 
+## General → HUD overlay (desktop)
+
+The General tab includes a **HUD overlay** section (on desktop only) with:
+
+- **Show HUD overlay** toggle — Turns the always-on-top card on/off. Persisted, so it remembers your choice on restart. Keyboard: Ctrl+Alt+H steps through hidden→focused→off, and flips this same toggle when it turns the HUD off.
+- **Skin** segmented control — Quest (warm, alert aesthetic) or Minimal (clean, cool). Pick your visual style.
+- **Rest mode** segmented control — Micro (one line only), Compact (header + footer), or Expanded (full view). This is the mode the HUD adopts, focused or not. Only two states override it: a decision prompt forces Expanded, and an alert or high-urgency block promotes Micro to Compact.
+- **Unfocused opacity** range slider — How dim the card gets when you're not interacting with it (15%–100%, default 35%). Hover always brightens it to 100%.
+
+All settings are persisted to the desktop settings store and take effect immediately. Ctrl+Alt+H cycles the HUD through hidden/focused/off, flipping the Show HUD overlay toggle above when it turns the HUD off; Esc instead drops to rest without hiding. While the HUD is focused, M cycles Micro to Compact to Expanded and saves the result here. See [Desktop (Tauri) → HUD overlay](/features/desktop-tauri#hud-overlay) for the full user guide.
+
 ## Where to start editing
 
 - Adding a new settings tab -> add a `*Page.tsx` under `components/` and wire it into `SettingsModal.tsx`.

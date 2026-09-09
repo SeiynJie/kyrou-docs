@@ -58,9 +58,63 @@ Plugins used: `autostart`, `global-shortcut`, `process`, `updater` (see the `@ta
 - **Minimize-to-tray needs BOTH sides to agree, and the JS side wins.** "Minimize to tray on close" only works if two independent things line up. (1) Rust's `MinimizeToTray` state (`lib.rs`) boots at `false` and is only ever set by the frontend's `invoke('set_minimize_to_tray', ...)`; that sync must be driven by a *subscribed* store value (`useSettingsStore((s) => s.minimizeToTray)` with the value in the effect deps), not a one-shot `getState()` read at mount, which can fire before zustand's `persist` rehydration lands and pin Rust at `false` for the whole session. (2) Any JS `onCloseRequested` listener **must call `event.preventDefault()`** when the setting is on: Tauri's wrapper in `@tauri-apps/api/window` calls `this.destroy()` after your handler unless you prevent it, which destroys the window even though Rust already called `api.prevent_close()` and hid it. Both bugs existed together until 2026-08-12; the second one presents as "window hides to tray, then the app quits a moment later."
 - **Logging**: `tauri_plugin_log` writes an Info-level log file to the OS app-log directory in **all** builds (release included) — check it when tray/shortcut/updater behavior misfires in the field; dev builds also log to stdout.
 
+## HUD overlay
+
+The HUD is an always-on-top floating card showing what you should focus on right now, visible even when Kyrou's main window is hidden or behind other applications. It dims when unfocused (default 35% opacity) and brightens on hover.
+
+### What it shows
+
+- **Current objective:** the task or routine step you're actively working on, with time remaining
+- **Progress:** routine step count (e.g. "2 of 6"), or elapsed time on a task
+- **Schedule changes:** if the current block is ending soon (≤5 min), past end ("schedule drift" at 5–15 min, "overdue" in red at 15+ min), or just completed
+- **Lookahead:** next block and when it starts (in 8 minutes, starts in 2 min, etc.)
+
+### Modes
+
+- **Micro:** one line only (title + time)
+- **Compact:** header + footer hint (works well while focused)
+- **Expanded:** full view with all details (a persisted mode set via M key or in Settings → General → HUD overlay; also auto-activates for decision views or high-priority states)
+
+You can cycle modes with the **M** key (Micro → Compact → Expanded → Micro) or select your preferred mode in Settings → General → HUD overlay — the choice persists. This works in every state, including the idle card you get when nothing is scheduled or the day is over.
+
+### Getting to it
+
+1. **Settings switch:** Settings → General → HUD overlay → toggle on (also starts at boot if enabled)
+2. **Tray menu:** Right-click the Kyrou tray icon → "Toggle HUD"
+3. **Hotkey:** **Ctrl+Alt+H** cycles through hidden → focused → off (dismissing this way turns the HUD off — the Settings switch and tray item flip with it — rather than just returning focus to the previous app)
+
+### Keyboard
+
+- **Ctrl+Alt+H:** hidden → show + focus; unfocused → focus; focused → turns the HUD off (flips the persisted HUD switch, staying in sync with Settings and the tray)
+- **Esc:** rest (dim, plate stays on screen)
+- **Arrow keys:** walk actions (Complete, Start, Done step, Open in Kyrou)
+- **Enter** or **D:** run the highlighted action
+- **Shift+F:** run Open in Kyrou
+- **M:** flip mode
+
+### Actions
+
+- **Complete:** mark the current task done and return focus to the main window
+- **Start:** begin a routine (only for routines with no active session)
+- **Done step:** mark the current routine step done and move to the next
+- **Open in Kyrou (Shift+F):** show and focus the main Kyrou window, then land the keyboard on the block the card was naming — the same find as the app's own Shift+F, so a timeboxed task goes to its block in the timebox rail (opening the rail if it is closed) and anything else to its planner row. Another page switches to Today first, and another day travels back to today first. Cards that name no block (Free window, the completion flash) only lift the window.
+
+### Appearance
+
+- **Skins:** Quest (warm, glitchy alert style) or Minimal (clean, cool) — pick in Settings
+- **Dim opacity:** draggable slider under the skin picker (15%–100%, default 35%); hover always raises to 100%
+- **Position:** drag the card anywhere on it (except its action buttons) and it snaps to screen edges — drop within 64 pixels of the edge and it rests flush against that edge. Both left-right and up-down snap independently, so a drop near the right edge but vertically centred snaps only horizontally. The position is remembered and always kept inside the monitor's usable area (above the taskbar), even if you unplug a monitor or change resolution. On mode change (M key or Settings), the edge it's docked to stays frozen: a right-docked HUD grows leftward into the screen, a left-docked HUD grows rightward
+
+### How it knows what you're doing
+
+The HUD reads your schedule from the main Kyrou window without needing to reload — it syncs across windows using the browser's `storage` event. When you complete a task in the HUD, the main window instantly sees it; when you start a routine in the main app, the HUD immediately shows it.
+
+---
+
 ## Where to start editing
 
 - Window size/behavior, bundle targets, updater endpoint -> `src-tauri/tauri.conf.json`.
 - Native OS integration (tray, custom commands invoked from the frontend via `invoke(...)`) -> `src-tauri/src/lib.rs`.
 - Frontend update-check UX -> `src/features/settings/lib/updater.ts` and `UpdatesPage.tsx`.
+- HUD overlay window bootstrap and hotkey -> `src/tauri/hud.ts`; view engine -> `src/kyrou/hud.ts`; presentation -> `src/app/Hud.tsx`.
 - Cutting an actual signed release -> [Release](/release).
