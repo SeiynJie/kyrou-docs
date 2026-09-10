@@ -66,6 +66,13 @@ the installed exe is `kyrou.exe`, not `app.exe` (the Cargo package name stays `a
 for release verification and support: window-matching tools (AutoHotkey `ahk_exe`, Task Manager,
 antivirus allowlists) now key off `kyrou.exe`.
 
+<Note>
+`mainBinaryName` renames the **bundled** exe only. `npm run app:dev` still runs
+`src-tauri/target/debug/app.exe`, named after the Cargo package — Task Manager shows it as
+"Kyrou Development" with an image name of `app.exe`. Waiting on `target/debug/kyrou.exe` to appear
+during a dev build waits forever on a build that already succeeded.
+</Note>
+
 <Warning>
 `tauri_plugin_autostart` registers the exe path when "Start Kyrou on computer startup" is enabled, not on every
 boot. A user who had autostart on before updating past this rename has it pointed at the
