@@ -32,6 +32,12 @@ row and a task-level accent override — see "Task colour" below. The timebox pa
 on first run (a missing local-storage key means open, not closed). The add-subtask field now runs
 the same NLP parser as everywhere else: a typed time promotes the new subtask with a start time, a
 typed duration sets its length.
+
+**2026-09-10:** The add-subtask field's parser now also carries priority, status, date, and
+recurrence, not just time and duration — see [Quick Add → Subtasks](/features/quick-add) for the
+full grammar and the same `--` tail's per-segment parsing (previously a subtask's tokens could leak
+into the parent task). Inbox and Backlog's task detail panels now wire this field the same way;
+previously they silently discarded everything typed but the title.
 </Note>
 
 ## What it does

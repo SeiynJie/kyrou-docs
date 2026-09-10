@@ -91,6 +91,24 @@ Supabase→Neon sync migration, which the [design port](/orientation) deleted en
 `src/` reads these anymore; they are dead weight in the workflow, not a live cutover. Cleaning them
 out of the workflow YAML is out of scope for the design-port branch.
 
+## Raising the supported-version floor
+
+The desktop app can refuse to run builds that fall below a minimum supported version (see [Desktop (Tauri) → Supported-version floor](/features/desktop-tauri#supported-version-floor)). That floor lives as a plain text file, `minimum-version.txt`, committed to `main` on the public `SeiynJie/kyrou-releases` repo — **not** in `latest.json`, and not in this repo. The file now exists and reads `0.0.0` — a deliberate no-op floor that every build satisfies, so nothing is gated until someone raises it. (A missing file would also fail open: a 404 means no floor.)
+
+<Warning>
+Raising the floor is deliberately **not** a step in the normal release process above and is not tied to any of the four version-bump files (`tauri.conf.json`, `Cargo.toml`, `package.json`, `package-lock.json`). It's a separate, one-file edit on `kyrou-releases`: no rebuild, no tag, no release.
+</Warning>
+
+<Warning>
+The file's contents must be a bare dotted-numeric version — digits and dots only, e.g. `0.4.0`. A leading `v` (`v0.4.0`), a pre-release suffix (`0.4.0-beta.1`), or any other extra text fails to parse, and the gate silently does nothing: the floor looks set but is inert, with no error anywhere. Surrounding whitespace and a trailing newline are trimmed and fine.
+</Warning>
+
+A floor that no shipped build currently satisfies is inert by design — the client only shows the "Update required" screen when a real update that actually clears the floor exists, so a mistyped or overly aggressive floor gates nobody instead of bricking installs. Reverting a floor is the same one-file edit, reversed.
+
+<Note>
+`raw.githubusercontent.com` serves the file with `Cache-Control: max-age=300`, so a change takes **up to five minutes** to reach clients. That applies to reverting as much as to raising: if you set a floor you did not mean to set, the fix is immediate but its effect is not.
+</Note>
+
 ## After a release
 
 - Sanity-check the GitHub Release page: installer asset + `latest.json` both present.

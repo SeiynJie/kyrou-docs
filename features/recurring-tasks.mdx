@@ -9,7 +9,9 @@ operating on `src/kyrou/store.ts`'s single `localStorage` record — the Dexie `
 table, `recurrenceRepository.ts`, and `SYNC_ENABLED` flag referenced below no longer exist (sync
 of any kind was removed). Mobile layout and sync/accounts are out of scope in the current build.
 Verify exact occurrence-generation behavior against `design-import/kyrou-app/kyrou-recur.js`
-before assuming the pre-port semantics described below still hold in every edge case.
+before assuming the pre-port semantics described below still hold in every edge case. One point
+that is confirmed for the current engine: a custom weekly rule can select more than one weekday
+(for example, Sunday and Thursday) and repeats on every selected day.
 
 **2026-09-09:** Quick Add and Task Detail titles now accept recurrence patterns (`every mon wed`, 
 `every 2 weeks`, `every 15th`, etc.) and emit a structured `rule` that matches the UI's repeat 

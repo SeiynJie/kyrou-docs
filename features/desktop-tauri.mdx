@@ -34,6 +34,8 @@ Kyrou ships as a Windows desktop app by wrapping the same web build in Tauri —
 | `src-tauri/src/main.rs` / `src-tauri/src/lib.rs` | Rust entry point and app setup (tray, plugins, commands like `set_minimize_to_tray`) |
 | `src/features/settings/lib/updater.ts` | Frontend side of auto-update — see [Settings & Updates](/features/settings-updates) |
 | `src/features/settings/lib/globalHotkey.ts` | Registers the OS-level "open Kyrou" hotkey |
+| `src/tauri/versionGate.ts` | Supported-version floor check, run on desktop startup — see below |
+| `src/app/VersionGate.tsx` | The "Update required" screen shown when the floor check gates the app |
 
 ## Key facts (from `src-tauri/tauri.conf.json`)
 
@@ -57,6 +59,15 @@ Plugins used: `autostart`, `global-shortcut`, `process`, `updater` (see the `@ta
   The hotkey is owned **exclusively** by the OS-level registration in `globalHotkey.ts`. It must never also exist as an in-app DOM action in `useKeyboardShortcuts` — it did until 2026-07-16, and the two handlers cancelled each other out whenever the window was focused, which is why the shortcut appeared dead on a fresh launch until you closed the window once. Note `detectShortcutConflicts.ts` cannot catch this: it only finds duplicate binds *within the app's own map*, and is blind to a bind claimed by both the DOM layer and the OS layer. If registration fails (usually another app already owns the accelerator), a toast now says so and points at Settings → Keyboard — without it the failure is invisible, since a release build has no devtools console and `plugin-log` is not a JS dependency.
 - **Minimize-to-tray needs BOTH sides to agree, and the JS side wins.** "Minimize to tray on close" only works if two independent things line up. (1) Rust's `MinimizeToTray` state (`lib.rs`) boots at `false` and is only ever set by the frontend's `invoke('set_minimize_to_tray', ...)`; that sync must be driven by a *subscribed* store value (`useSettingsStore((s) => s.minimizeToTray)` with the value in the effect deps), not a one-shot `getState()` read at mount, which can fire before zustand's `persist` rehydration lands and pin Rust at `false` for the whole session. (2) Any JS `onCloseRequested` listener **must call `event.preventDefault()`** when the setting is on: Tauri's wrapper in `@tauri-apps/api/window` calls `this.destroy()` after your handler unless you prevent it, which destroys the window even though Rust already called `api.prevent_close()` and hid it. Both bugs existed together until 2026-08-12; the second one presents as "window hides to tray, then the app quits a moment later."
 - **Logging**: `tauri_plugin_log` writes an Info-level log file to the OS app-log directory in **all** builds (release included) — check it when tray/shortcut/updater behavior misfires in the field; dev builds also log to stdout.
+
+## Supported-version floor
+
+On startup, the desktop app checks whether the installed build is still supported. If it's too old, the normal app is replaced by an **"Update required"** screen with two actions:
+
+- **Update now** — downloads and installs the latest version, then relaunches Kyrou.
+- **Export my data** — always available, even on this screen, so you can get your data out at any time.
+
+This screen is desktop-only (the web build never shows it) and it never appears just because your connection is offline or slow — if the check can't complete for any reason, Kyrou opens normally. It also only ever appears when there's an actual update available that resolves it, so you're never shown a dead end.
 
 ## HUD overlay
 

@@ -51,6 +51,19 @@ On mobile, Settings is reachable from the bottom navigation as a real tab-bar ac
 
 <Note>Because `Modal` is not portaled, a nested dialog opened from inside Settings (`KeypressCapture`, while rebinding a shortcut) renders inside Settings' own DOM container. `useRovingPanel` explicitly ignores keys that originate inside a nested `role="dialog"` so the outer Settings panel doesn't also try to interpret them as roving-nav input.</Note>
 
+## Update required screen (desktop)
+
+If Kyrou detects that the installed build is too old to keep supporting, it shows a full-screen "Update required" card in place of the normal app, with **Update now** (installs the latest version and relaunches) and **Export my data** (always enabled, even here). This is desktop-only, and it only appears when there's an update available that actually resolves it — a network hiccup or being offline never triggers it, and it never shows if the app has nothing newer to offer you. See [Desktop (Tauri) → Supported-version floor](/features/desktop-tauri#supported-version-floor) for the full picture.
+
+## General → Privacy
+
+The General tab includes a **Privacy** section at the bottom with:
+
+- **Share anonymous usage data** toggle — Controls whether Kyrou sends usage events and session replay data to PostHog for analytics and debugging. ON by default. Turning it off calls PostHog's own `opt_out_capturing()` API, which stops both event capture and session replay; the choice is persisted by PostHog under `__ph_opt_in_out_<token>` in localStorage.
+- **Sub-label** — "Helps improve Kyrou. No account or email is collected." Clarifies that only anonymous usage data is sent, not personal information.
+
+Session replay is full-fidelity (all text visible in replays) — a deliberate choice to support debugging Kyrou's UI. Users who object can opt out via this toggle.
+
 ## General → HUD overlay (desktop)
 
 The General tab includes a **HUD overlay** section (on desktop only) with:
