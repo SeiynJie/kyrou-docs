@@ -7,8 +7,8 @@ description: The current workflow for adding or changing a page/panel/modal afte
 
 The pre-port workflow (add a field to `src/types/task.ts`, bump the Dexie schema in
 `src/db/index.ts`, add a typed function to a repository, consume it via a `useLiveQuery` hook, put
-new UI under `src/features/{feature}/`) no longer applies. That whole stack — `src/types/`,
-`src/db/`, `src/stores/`, `src/features/` — was deleted in the 2026-09-04 design port (see
+new UI under `src/features/{feature}/`) no longer applies — that pattern is historical. The whole stack —
+`src/types/`, `src/db/`, `src/stores/`, `src/features/` — was deleted in the 2026-09-04 design port (see
 [Orientation](/orientation)). This page describes the current workflow.
 
 ## The current shape, end to end
@@ -28,8 +28,8 @@ Claude Design project, not in code.
    items)` to write them back), not through a repository or a reactive query hook. To re-render on
    every store change, subscribe with `KyrouStore.subscribe(fn)` (returns an unsubscribe function)
    or listen for the `kyrou:*` `CustomEvent`s it dispatches on `window` (`kyrou:history`,
-   `kyrou:restore`, `kyrou:toast`, ...). `KyrouStore` is a single synchronous module over one
-   `localStorage` record (`kyrou:data:v1`) — there is no async repository layer to route through.
+   `kyrou:restore`, `kyrou:toast`, ...). `KyrouStore` hydrates from IndexedDB before the first render
+   and saves as a diff; every store call is synchronous and does not route through an async repository layer.
 4. **Shared behavior** — reuse the existing engine modules in `src/kyrou/*` (recurrence, routines,
    projects, parsing, undo/toast, theming, etc.) instead of re-implementing logic the design
    already has ported. Reuse `src/ds/*` for shared UI (`Badge`, `Button`, `Checkbox`, etc.).
@@ -71,8 +71,8 @@ toggle, it belongs in `settingsStore`.
 ## Tests
 
 Render-smoke tests live in `src/app/__tests__/` (e.g. `pages12.test.tsx`, `modals13.test.tsx`).
-`src/app/__tests__/seed.ts` seeds `kyrou:data:v1` in `localStorage` before each test file runs.
-Because `store.ts` reads `localStorage` at module-evaluation time, any component under test that
+`src/app/__tests__/seed.ts` sets up the test store (mocked IndexedDB) before each test file runs.
+Because store data is not hydrated until `main.tsx` awaits `KyrouStore.hydrate()`, any component under test that
 touches the store must be **dynamically imported after `seed()` runs**, not statically imported at
 the top of the file — a static import sees a blank store.
 

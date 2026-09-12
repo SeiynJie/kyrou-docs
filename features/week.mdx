@@ -5,9 +5,8 @@ description: The seven-day view, reusing Today's planner and calendar building b
 
 <Note>
 **2026-09-04 design port:** Week is now `src/app/Week.tsx`, which embeds `src/app/Today.tsx` per
-day column (`embedded={true}`), both reading/writing `src/kyrou/store.ts`'s single `localStorage`
-record. There is no Dexie or `uiStore` (Zustand) in the current build. Mobile layout and
-sync/accounts are out of scope. The source of truth for exact behavior is now
+day column (`embedded={true}`), both reading/writing `src/kyrou/store.ts` (backed by IndexedDB). There is no
+`uiStore` (Zustand) in the current build. Mobile layout is out of scope. The source of truth for exact behavior is now
 `design-import/kyrou-app/Week.dc.html`.
 
 **2026-09-08:** Week remembers the last day you scrolled to (`localStorage['kyrou:week:day']`) and

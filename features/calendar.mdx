@@ -5,9 +5,9 @@ description: The unified time-grid view shared by the Today and Week pages in Ky
 
 <Note>
 **2026-09-04 design port:** Kyrou's UI and data layer were rebuilt as a mechanical port of a
-Claude Design app (see [Orientation](/orientation)). Mobile layout and sync/accounts are out of
-scope in the current build — desktop/web only, local `localStorage` storage, signed out by
-default. This page's implementation details may predate the port; the underlying source of truth
+Claude Design app (see [Orientation](/orientation)). Mobile layout is out of scope in the current build.
+Data lives in IndexedDB (backed by `src/kyrou/store.ts` and `src/kyrou/persistence/`).
+This page's implementation details may predate the port; the underlying source of truth
 is now `design-import/kyrou-app/Today.dc.html` / `Week.dc.html` and the ported `src/app/Today.tsx`
 / `Week.tsx`.
 </Note>

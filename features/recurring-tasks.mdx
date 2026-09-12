@@ -5,9 +5,8 @@ description: Repeat rules that materialize into ordinary tasks, so planner, cale
 
 <Note>
 **2026-09-04 design port:** recurrence is now the design's own engine, `src/kyrou/recur.ts`,
-operating on `src/kyrou/store.ts`'s single `localStorage` record — the Dexie `recurrence_rules`
-table, `recurrenceRepository.ts`, and `SYNC_ENABLED` flag referenced below no longer exist (sync
-of any kind was removed). Mobile layout and sync/accounts are out of scope in the current build.
+operating on `src/kyrou/store.ts` (backed by IndexedDB). The recurrence rule rides on the task
+and syncs with it when you are signed in. Mobile layout is out of scope in the current build.
 Verify exact occurrence-generation behavior against `design-import/kyrou-app/kyrou-recur.js`
 before assuming the pre-port semantics described below still hold in every edge case. One point
 that is confirmed for the current engine: a custom weekly rule can select more than one weekday
@@ -38,7 +37,6 @@ Microsoft Graph.
 | `src/features/today/components/TaskDetailSheet.tsx` | Hosts the Repeat row |
 | `src/features/today/components/RecurrenceEditor.tsx` | Custom repeat modal (interval, frequency, weekdays, start date, end condition) |
 | `src/features/today/components/RecurrenceScopeModal.tsx` | This only / This and following / All scope chooser |
-| `src/features/sync/flags.ts` | `SYNC_ENABLED` — sync is currently off, so recurring data is local-only |
 
 ## Key concepts / how it connects
 
@@ -51,7 +49,8 @@ Microsoft Graph.
   originalDate)`, so re-running materialization for the same rule/date is idempotent — it can never
   create a duplicate occurrence.
 - **`generatedThrough` is local-only.** It's the cursor tracking how far a rule has been
-  materialized. It deliberately never syncs and has no server column.
+  materialized. It deliberately never syncs and has no server column because it is a client-side
+  optimization.
 - **Two removal kinds, deliberately opposite.** A user skipping one occurrence tombstones it
   (soft-delete) and permanently claims that date slot — the occurrence dedupe read does not filter
   soft-deleted rows, so a skipped occurrence never comes back. A pattern-change removal (switching
@@ -69,9 +68,8 @@ Microsoft Graph.
 - **Card indicators.** `TaskCard` and the calendar's `TimeBlockBody` show a `repeat` glyph (or
   `event_repeat` when an occurrence has been individually edited), gated on the `showRecurrence`
   setting (on by default).
-- **Sync is off.** Kyrou's sync layer is currently disabled behind `SYNC_ENABLED`
-  (`src/features/sync/flags.ts`), and the Neon migration for `recurrence_rules` has not been
-  written — recurring data lives in IndexedDB only for now.
+- **Rule validation.** The recurrence rule's shape is validated on both client and server using
+  the same checker (`src/kyrou/persistence/rule.ts` and `workers/kyrou-api/src/rule.ts`).
 
 ## Not yet built
 

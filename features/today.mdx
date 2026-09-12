@@ -5,10 +5,9 @@ description: The main daily planner screen with Planner, Calendar, and Markdown 
 
 <Note>
 **2026-09-04 design port:** Today is now `src/app/Today.tsx`, a ported class component reading and
-writing `src/kyrou/store.ts`'s single `localStorage` record — there is no Dexie, `useLiveQuery`,
-`uiStore` (Zustand), or Markdown mode in the current build. Mobile layout and sync/accounts are
-out of scope. The implementation details below (Dexie tables, `uiStore` fields, `zustand`
-`persist`) describe the pre-port implementation; the source of truth for exact behavior is now
+writing `src/kyrou/store.ts` (backed by IndexedDB and `src/kyrou/persistence/`). There is no
+`useLiveQuery`, `uiStore` (Zustand), or Markdown mode in the current build. Mobile layout is
+out of scope. The implementation details below describe the pre-port implementation; the source of truth for exact behavior is now
 `design-import/kyrou-app/Today.dc.html`.
 
 **2026-09-08:** The standalone Today page remembers the last day you looked at

@@ -5,11 +5,8 @@ description: Where undated backlog tasks and project management live together in
 
 <Note>
 **2026-09-04 design port:** Inbox and Project Detail are now `src/app/Inbox.tsx` /
-`src/app/ProjectDetail.tsx`, ported class components reading/writing
-`src/kyrou/store.ts`'s single `localStorage` record — there is no Dexie, no
-`projectRepository.ts`, and no `src/db/` or `src/types/task.ts` anymore. Mobile layout and
-sync/accounts are out of scope in the current build. The file-path and Dexie-schema details below
-describe the pre-port implementation.
+`src/app/ProjectDetail.tsx`, ported class components reading/writing `src/kyrou/store.ts` (backed by IndexedDB).
+Mobile layout is out of scope in the current build.
 
 **2026-09-05 fix:** Task Detail picker choices (status, priority, duration, project) now persist on
 the pick that made them, picking **Inbox** in the project picker clears the project, and tasks whose project is
@@ -34,9 +31,8 @@ The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and projec
 ## Key concepts / how it connects
 
 - **`src/features/projects/components/` exists but is currently empty.** Despite the folder scaffold, all project-related UI logic actually lives under `src/features/inbox/components/` today (`CreateProjectModal.tsx` etc.) — don't go looking in `projects/` for working code.
-- **Project CRUD goes through `src/db/repositories/projectRepository.ts`**, following the same repository pattern as tasks — never import Dexie directly from a component.
-- **Project shape**: `{ id, name, color, emoji?, createdAt, updatedAt }` (`src/types/task.ts`). Color is a hex string; emoji is optional (added in Dexie schema `version(2)`, see `src/db/index.ts`).
-- **A task's `projectId: number | null`** links it to a project; the inbox groups/filters using that field.
+- **Projects live in `KyrouStore`** and are created through `KyrouProjects.create()`, which deduplicates names case-insensitively so no two projects share a name.
+- **A task's `projectId` (a uuid string)** links it to a project by id; the inbox groups/filters using that field.
 - **`InboxTaskRow`'s right-click menu is the same shared `buildTaskMenu()`** used by the planner's
   `TaskCard` and `TimeBlock` — it previously hand-rolled a near-copy, which has been removed. That
   means it gets the same keyboard nav (arrow keys, flyouts, Home/End, Escape) and the top-level
@@ -54,10 +50,9 @@ The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and projec
 - **The Backlog sidebar now renders on this page too**, reusing `uiStore.backlogOpen` — no new
   state was added for it.
 - **A project can be marked "Default project"** — a toggle in `CreateProjectModal` when editing an
-  existing project, backed by `isDefault` on `Project` and `setDefaultProject()` in
-  `projectRepository.ts` (only one project can be default at a time; setting one clears the rest).
-  Quick Add assigns new tasks to the default project when no `#project` token is typed — see
-  [Quick Add](/features/quick-add).
+  existing project. `KyrouProjects.defaultId()` and `KyrouProjects.defaultName()` retrieve the current
+  default; only one project can be default at a time. Quick Add assigns new tasks to the default project
+  when no `#project` token is typed — see [Quick Add](/features/quick-add).
 - **Project colour picker.** When creating or editing a project in `CreateProjectModal`, clicking the
   colour field opens a `ColorGrid` popover showing a 12×5 grid of colour swatches (60 total). Keyboard:
   arrow keys navigate 2D (clamped), Home/End jump to first/last, Enter picks, Esc closes. A footer row
@@ -68,6 +63,6 @@ The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and projec
 
 ## Where to start editing
 
-- Changing the inbox list/sort behavior -> `InboxProjectsPage.tsx` + `SortMenu.tsx`.
-- Changing project creation/edit fields -> `CreateProjectModal.tsx` (and `projectRepository.ts` if you add a field — see [Editing -> Features](/editing/features)).
-- Changing a single row's look -> `InboxTaskRow.tsx`.
+- Changing the inbox list/sort behavior -> `src/app/Inbox.tsx` + relevant components.
+- Changing project creation/edit fields -> edit the project shape in `src/kyrou/projects.ts` and `src/kyrou/store.ts`.
+- Wiring default project -> `KyrouProjects.defaultId()` in `src/kyrou/projects.ts`.

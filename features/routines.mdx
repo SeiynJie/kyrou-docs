@@ -6,9 +6,9 @@ description: Create reusable local workflows and execute them one step at a time
 <Note>
 **2026-09-04 design port:** Routines are now `src/app/Routines.tsx` and friends
 (`RoutineEditor.tsx`, `RoutineRunnerPanel.tsx`, `RoutineRunner.tsx`, `RunDetail.tsx`,
-`StepDetail.tsx`), backed by `src/kyrou/routines.ts` and stored in
-`src/kyrou/store.ts`'s single `localStorage` record — not IndexedDB. Mobile layout and
-sync/accounts are out of scope in the current build.
+`StepDetail.tsx`), backed by `src/kyrou/routines.ts` and stored in IndexedDB via `src/kyrou/store.ts`.
+They sync when you are signed in (dev harness only until the Milestone D sync UI arrives).
+Mobile layout is out of scope in the current build.
 
 **2026-09-08:** The runner panel gains a **Skip today / Unskip today** action (`S`), available
 when idle with no pending run; a skipped day's card strikes through the same way a done one does.
@@ -46,5 +46,4 @@ is active.
 
 On desktop, the right-hand ReUI Stepper 13 rail shows the complete sequence and labels
 each step as current, up next, skipped, or completed. On mobile, current-step controls
-remain available without the desktop rail. Routine sync is deferred; this release is
-local-only.
+remain available without the desktop rail. Routines, the routine day log, and routine runs sync when you are signed in.

@@ -3,10 +3,11 @@ title: Orientation
 description: The mental model you need before touching any Kyrou code — stack, source map, paging, data flow, and date/time conventions after the 2026-09-04 design port.
 ---
 
-Kyrou is a **local-first desktop/web daily planner**. There is no backend, no auth, and no
-external API calls — everything lives in one `localStorage` record, in the browser or in the
-Tauri desktop shell. On 2026-09-04 the entire UI and data layer were replaced by a **mechanical,
-one-to-one port** of a hand-built Claude Design app: Dexie/IndexedDB, React Router, Tailwind CSS,
+Kyrou is a **local-first desktop/web daily planner**. Data lives in IndexedDB through `KyrouStore`,
+with the persistence layer in `src/kyrou/persistence/` and sync in `src/kyrou/sync/` + `workers/kyrou-api`.
+An account and sync are optional; the sync UI is available only through the dev harness until a later
+milestone. On 2026-09-04 the entire UI and data layer were replaced by a **mechanical,
+one-to-one port** of a hand-built Claude Design app: Dexie, React Router, Tailwind CSS,
 `@dnd-kit`, `chrono-node`, `react-toastify`, and the in-progress Supabase/Neon sync migration were
 all removed. This page describes the app as it exists today.
 
@@ -16,8 +17,9 @@ all removed. This page describes the app as it exists today.
 |---|---|
 | UI framework | React 19 + Vite + TypeScript, class components (`extends Component<Props, any>`) |
 | Styling | CSS custom-property tokens in `src/ds/tokens/*.css`, dark by default with Light/System support, no Tailwind |
-| Persistence | One `localStorage` record (`kyrou:data:v1`) owned by `src/kyrou/store.ts` |
+| Persistence | IndexedDB (via `src/kyrou/store.ts` and `src/kyrou/persistence/`) with optional sync when signed in |
 | Desktop settings | Zustand (`src/tauri/settingsStore.ts`) — three booleans, not domain data |
+| UI preferences | `localStorage` (last viewed page/day, theme, PostHog opt-out) |
 | Icons | `lucide` (`window.lucide.createIcons()`), not `lucide-react` |
 | NLP quick-add parsing | The design's own parser, `src/kyrou/parse.ts` — no `chrono-node` |
 | Desktop packaging | Tauri v2 (Rust shell, NSIS installer on Windows) |
@@ -69,27 +71,38 @@ copied behaviour reference listing every wired vs. `NOT WIRED` surface.
 
 - **Mobile layout.** The design is desktop/web-window shaped; there is no mobile breakpoint tree,
   bottom nav, or bottom sheets in the ported app.
-- **Sync, accounts, Supabase/Neon, Stripe.** Fully removed. Any future sync work needs a fresh
-  design against the localStorage store below — the old Dexie-first sync plan no longer applies.
+- **Stripe/billing.** Still out of scope.
+- **Sync, accounts.** Live as of Milestone C2: `KyrouStore` is an in-memory record hydrated from
+  IndexedDB (`src/kyrou/persistence/`), and `src/kyrou/sync/` + `workers/kyrou-api` push/pull
+  tasks, projects, routines, routine day-log, and routine runs when signed in — but the sign-in UI
+  is reachable only through the dev harness until Milestone D. The old Supabase/Neon plan and the
+  golden-path diagram below (data-flow, not accounts) are what changed; see it below.
 - **Markdown editing mode.**
 
 ## The golden data-flow rule
 
-There is exactly one path data takes, and it is **synchronous**, not a reactive query layer:
+There is exactly one path data takes, and reads stay **synchronous** against the in-memory record —
+IndexedDB and sync sit behind `save()`, not in front of every read:
 
 ```
 UI component method
    |  calls a store function directly
    v
 src/kyrou/store.ts (KyrouStore) — mutates its in-memory `data` object
-   |  writes the whole record as JSON
+   |  save() computes a diff and writes it in one IndexedDB transaction
    v
-localStorage['kyrou:data:v1']
+src/kyrou/persistence/ (IndexedDB, `rev`/`localRev`/`fieldRevs`/`deletedAt` per row)
+   |  when signed in, the diff also enqueues an op for
+   v
+src/kyrou/sync/ + workers/kyrou-api (push/pull; dev harness only until Milestone D)
    |  subscribed components re-render (subs[] callbacks + forceUpdate),
    |  or via a 'kyrou:*' CustomEvent on window
    v
 component re-renders
 ```
+
+`kyrou:data:v1` in `localStorage` is the migrated-once legacy record — kept for now, never written
+after the v4 upgrade.
 
 `KyrouStore`'s shape:
 
@@ -103,16 +116,7 @@ Every save that actually changes the record pushes the previous snapshot onto an
 session-only undo stack (50 deep); saves within 700ms sharing a coalesce key fold into one undo
 step. Undo/redo swap whole snapshots and fire `kyrou:restore`.
 
-**There is no repository layer, no `useLiveQuery`, and no IndexedDB.** Components import
-`src/kyrou/store.ts`'s named exports directly. The engine modules are a one-directional dependency
-chain, not a cycle: `store.ts` imports `recur.ts` (which itself imports nothing); `routines.ts`
-imports `store.ts`, `recur.ts`, and `undo.ts`; `projects.ts` imports `store.ts` — nothing imports
-back into `routines.ts` or `projects.ts`.
-
-**Ceiling, not a bug:** this is one localStorage record, not a database (see the `// ponytail:`
-note at the top of `src/kyrou/store.ts`). If it nears the ~5 MB localStorage limit, the upgrade
-path is a plugin-fs-backed file, not IndexedDB. There is deliberately no migration from any
-pre-port Dexie data.
+**Data model:** `KyrouStore` is one memory record hydrated from IndexedDB (`src/kyrou/persistence/`) before the first render and saved as a diff-based transactional write. There is no repository layer, no `useLiveQuery`, and no async data access — every store call is synchronous. Tasks, projects, routines, the routine day log and runs sync when signed in via `src/kyrou/sync/` + `workers/kyrou-api` (dev harness only until Milestone D). Components import `src/kyrou/store.ts`'s named exports directly. The engine modules are a one-directional dependency chain, not a cycle: `store.ts` imports `recur.ts` (which itself imports nothing); `routines.ts` imports `store.ts`, `recur.ts`, and `undo.ts`; `projects.ts` imports `store.ts` — nothing imports back into `routines.ts` or `projects.ts`.
 
 Zustand (`src/tauri/settingsStore.ts`) is unrelated to `KyrouStore` — it holds only three desktop
 preferences (`startOnStartup`, `minimizeToTray`, `updateCheckOnStartup`), never domain data.
