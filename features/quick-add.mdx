@@ -94,10 +94,9 @@ store record.
 
 | File | Purpose |
 |---|---|
-| `src/features/quickadd/components/QuickAddModal.tsx` | The modal itself — input field, live-parsed preview, submit handling. Mounted globally in `App.tsx` |
-| `src/features/quickadd/components/ParsingChips.tsx` | Renders the little chips showing what was parsed (date, time, priority, project, tags...) as you type |
-| `src/features/quickadd/useTokenAutocomplete.ts` | Wraps the shared `useTypeahead` hook (`src/lib/hooks/`) to autocomplete `#project` and other tokens, plus a "Create project" suggestion when a `#name` doesn't match an existing project |
-| `src/lib/nlpParser.ts` | The actual parser — `parseQuickAdd(input)` returns a `ParsedTask`. Uses `chrono-node` for date/time extraction and its own regex-based token parsing for everything else |
+| `src/app/QuickAddModal.tsx` | The modal class component — input field, live-parsed preview, submit handling. Mounted globally in `HudShell` |
+| `src/kyrou/parse.ts` | The parser engine — `KyrouParse.parse(input, opts)` returns parsed tokens (date, time, priority, project, recurrence, subtasks). No chrono-node; pure date/time grammar |
+| `src/kyrou/duration.ts` | Clock and duration parsing: `KyrouDuration` parses text like `2h30m` for task lengths |
 
 ## Key concepts / how it connects
 

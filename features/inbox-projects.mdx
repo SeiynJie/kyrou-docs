@@ -21,25 +21,13 @@ The Inbox & Projects screen (`/inbox`) is where undated/backlog tasks and projec
 
 | File | Purpose |
 |---|---|
-| `src/features/inbox/InboxProjectsPage.tsx` | Route target for `/inbox`; top-level page composing the sections below |
-| `src/features/inbox/components/CollapsibleSection.tsx` | Expand/collapse wrapper used to group tasks (e.g. per project) |
-| `src/features/inbox/components/CreateProjectModal.tsx` | Modal for creating/editing a project; mounted globally in `App.tsx` so it can be opened from anywhere |
-| `src/features/inbox/components/InboxTaskRow.tsx` | A single task row in the inbox list |
-| `src/features/inbox/components/InlineInput.tsx` | Inline text input used for quick renaming/adding without a modal |
-| `src/features/inbox/components/SortMenu.tsx` | Sort-order picker for the inbox list |
+| `src/app/Inbox.tsx` | Route target for `/inbox` — top-level screen composing task list by project |
+| `src/app/ProjectDetail.tsx` | Modal for viewing/editing project metadata (name, color, icon, note, default flag) |
 
 ## Key concepts / how it connects
-
-- **`src/features/projects/components/` exists but is currently empty.** Despite the folder scaffold, all project-related UI logic actually lives under `src/features/inbox/components/` today (`CreateProjectModal.tsx` etc.) — don't go looking in `projects/` for working code.
-- **Projects live in `KyrouStore`** and are created through `KyrouProjects.create()`, which deduplicates names case-insensitively so no two projects share a name.
+- **Projects live in `KyrouStore.projects()`** via `src/kyrou/projects.ts`, which deduplicates names case-insensitively so no two projects share a name.
 - **A task's `projectId` (a uuid string)** links it to a project by id; the inbox groups/filters using that field.
-- **`InboxTaskRow`'s right-click menu is the same shared `buildTaskMenu()`** used by the planner's
-  `TaskCard` and `TimeBlock` — it previously hand-rolled a near-copy, which has been removed. That
-  means it gets the same keyboard nav (arrow keys, flyouts, Home/End, Escape) and the top-level
-  "Mark as done"/"Mark as not done" toggle for free; see [Today](/features/today) for the keyboard
-  details.
-- **`InboxTaskRow.tsx` currently has no production call site** — `InboxProjectsPage` renders
-  `TaskCard` for every row instead. It's a candidate for deletion, left in place for now.
+- **Task rows use the shared `TaskCard` component** (see [Today](/features/today)), so right-click menu, keyboard nav, and drag-to-reorder all work consistently.
 - **The page is keyboard-navigable via the shared roving-focus panel**, the same primitive used by
   Settings and the Task Detail Sheet. `CollapsibleSection` headers are a `FocusStop` group
   (`group="horizontal"`: Left collapses, Right expands), and the `TaskCard`s inside each section

@@ -29,12 +29,9 @@ The Week screen (`/week`) shows seven days side by side, in either a planner-lis
 
 | File | Purpose |
 |---|---|
-| `src/features/week/components/WeekPage.tsx` | Route target for `/week`; orchestrates the week view similarly to `TodayPage` |
-| `src/features/week/components/WeekPlannerView.tsx` | List-based planner laid out across seven day columns |
-| `src/features/week/components/WeekColumn.tsx` | A single day's column within the planner layout |
-| `src/features/week/components/WeekHeader.tsx` | Date-range header / day labels + navigation (prev/next week) |
+| `src/app/Week.tsx` | Route target for `/week`; orchestrates the week view, embeds Today columns per date, reads/writes `src/kyrou/store.ts` |
 
-Calendar mode within Week reuses `src/features/calendar/UnifiedCalendar.tsx` with `mode="week"` — there is no separate week-specific calendar grid implementation.
+Calendar mode within Week reuses `src/kyrou/calendar.tsx` with `mode="week"` — there is no separate week-specific calendar grid implementation.
 
 ## Key concepts / how it connects
 

@@ -30,13 +30,9 @@ Microsoft Graph.
 
 | File | Purpose |
 |---|---|
-| `src/lib/recurrence.ts` | Pure expansion engine — `expandRule()` turns a rule + date range into occurrence dates, `describeRule()` renders the human-readable summary |
-| `src/lib/uuid.ts` | RFC 4122 v5 UUID over native Web Crypto, used for deterministic occurrence identity |
-| `src/types/recurrence.ts` | `RecurrenceRule` type |
-| `src/db/repositories/recurrenceRepository.ts` | Rule CRUD, ownership scoping, materialization pass |
-| `src/features/today/components/TaskDetailSheet.tsx` | Hosts the Repeat row |
-| `src/features/today/components/RecurrenceEditor.tsx` | Custom repeat modal (interval, frequency, weekdays, start date, end condition) |
-| `src/features/today/components/RecurrenceScopeModal.tsx` | This only / This and following / All scope chooser |
+| `src/kyrou/recur.ts` | Pure expansion engine — `each()` turns a rule + date range into occurrence dates, `describe()` renders the human-readable summary, `make()` normalizes rules |
+| `src/app/TaskDetail.tsx` | Hosts the Repeat row in the task detail modal |
+| `src/app/RecurrenceScopeModal.tsx` | This only / This and following / All scope chooser |
 
 ## Key concepts / how it connects
 

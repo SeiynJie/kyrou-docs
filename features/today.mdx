@@ -49,30 +49,16 @@ Alongside the main panel, a **Backlog sidebar** lists tasks that are overdue or 
 
 | File | Purpose |
 |---|---|
-| `src/features/today/components/TodayPage.tsx` | Orchestrator — picks which of Planner / Calendar / Markdown to render based on `uiStore.todayView`, and shows/hides the backlog sidebar |
-| `src/features/today/components/PlannerView.tsx` | The list-based planner (scheduled + unscheduled sections) |
-| `src/features/today/components/TaskCard.tsx` | A single task row/card — checkbox, title, time, priority indicator. Also renders subtask rows (tasks with `parentId` set), in a compact/indented variant |
-| `src/features/today/components/TaskSection.tsx` | Groups tasks into labeled sections (e.g. "Morning", "Unscheduled") |
-| `src/features/today/components/TaskDetailSheet.tsx` | Bottom sheet / dialog for viewing & editing one task's full detail (notes, subtasks, project, priority, schedule) |
-| `src/components/ui/TimePicker.tsx` | Shared M3 time picker (dial + keyboard-input variants), used by the detail sheet's Scheduled card |
-| `src/features/today/components/BacklogSidebar.tsx` | Sidebar listing overdue/undated tasks, draggable onto the day |
-| `src/components/ui/ContextMenu.tsx` | Shared right-click / long-press menu, driven by a config of menu items (built per-surface in `src/components/ui/contextMenuItems.tsx`); right-click opens the menu via `src/features/shared/useRightClickMenu.ts` |
-| `src/components/ui/TaskCheckbox.tsx` | Shared circle checkbox used for the done toggle, subtask rows, and select mode |
-| `src/db/repositories/taskRepository.ts` | `useChildTasks(parentId)`, `toggleSubtask`, `promoteSubtask`, `demoteTaskToSubtask`, `setParent` — subtask reads/mutations, alongside the regular task CRUD |
-| `src/lib/hooks/usePlannerKeyboardNav.ts` | Arrow-key navigation plus planner keyboard clipboard and Context Menu-key handling |
-| `src/lib/taskClipboard.ts` | Shared copy/cut paste mutation path for menus and keyboard shortcuts |
-| `src/lib/plannerTaskOrder.ts` | Single source of truth for sorting + morning/afternoon/evening bucketing (shared by Planner, Week column, and keyboard-nav ordering) |
-| `src/features/today/components/PlanningRitual.tsx` | Guided "plan your day" flow |
-| `src/features/today/components/QuickAddInput.tsx` | Inline quick-add field embedded in the planner |
-| `src/features/today/components/TimeBlock.tsx` / `UnscheduledBlock.tsx` | Rendering helpers used by the planner for scheduled vs. unscheduled tasks |
-| `src/features/today/components/MarkdownView.tsx` | Renders the day's tasks as an editable markdown document |
-| `src/features/today/components/MarkdownEditor.tsx` | CodeMirror-based editor instance backing Markdown mode |
-| `src/features/today/components/MarkdownLeaveGuard.tsx` | Mounted globally in `App.tsx`; intercepts navigation away from Markdown mode while there are unsaved edits |
-| `src/features/today/components/ModeHelp.tsx` | Inline help/legend for markdown syntax |
-| `src/features/today/components/editorKeybindings.ts` | CodeMirror keybinding config for the markdown editor |
-| `src/features/today/components/hideIdMarkers.ts` | Hides internal task-ID markers embedded in the markdown text so you only see human-readable content |
+| `src/app/Today.tsx` | Main screen class component — mounts Planner view (list-based, scheduled + unscheduled sections), coordinate with Backlog sidebar |
+| `src/app/TaskCard.tsx` | A single task row/card — checkbox, title, time, priority indicator. Also renders subtask rows (tasks with `parentId` set), in a compact/indented variant |
+| `src/app/TaskDetail.tsx` | Modal/sheet for viewing & editing one task's full detail (notes, subtasks, project, priority, schedule) |
+| `src/kyrou/timepicker.tsx` | Time picker component used by the detail modal's Scheduled field |
+| `src/app/Backlog.tsx` | Sidebar listing overdue/undated tasks, draggable onto the day |
+| `src/app/ContextMenu.tsx` | Right-click / long-press menu, driven by menu items config |
+| `src/kyrou/sortfilter.ts` | Single source of truth for sorting + morning/afternoon/evening bucketing (shared by Planner, Week column, and keyboard navigation) |
+| `src/kyrou/store.ts` | `KyrouStore` — task reads via `tasks(dayKey)`, mutations via `edit(scope, task, dayKey, mapper)`, `move(scope, task, fromKey, toKey, mapper)`, `remove(scope, task, dayKey)`. Domain data hydrated from IndexedDB and `src/kyrou/persistence/` |
 
-Calendar mode itself lives in `src/features/calendar/` (see [Calendar](/features/calendar)) — `TodayPage` just mounts `<UnifiedCalendar mode="today" />`.
+Calendar mode itself lives in `src/kyrou/calendar.tsx` (see [Calendar](/features/calendar)) — `Today` mounts it with `mode="today"`.
 
 ## Key concepts / how it connects
 

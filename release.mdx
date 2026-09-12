@@ -56,7 +56,7 @@ These steps describe the current Windows desktop release pipeline (x64, x86, ARM
    <Warning>
    Always cut the tag from `main`. The tag decides what gets built, so a tag on a feature branch silently ships a release missing everything on `main`.
    </Warning>
-6. The in-app updater (`src/tauri/updater.ts` — moved here by the 2026-09-04 design port; formerly `src/features/settings/lib/updater.ts`) picks up the new release automatically — it polls `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`, which the release workflow just published to.
+6. The in-app updater (`src/tauri/updater.ts`) picks up the new release automatically — it polls `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json`, which the release workflow just published to.
 7. A `publish-docs` job (`needs: release`) also runs, invoking `.github/workflows/docs-publish.yml` via `workflow_call` — so cutting a release also mirrors the current `docs-site/` into `kyrou-docs` and refreshes the live Mintlify site, in addition to the normal on-push trigger. See [Deploy](/deploy) for the mirror mechanics.
 
 ## Installed binary name
