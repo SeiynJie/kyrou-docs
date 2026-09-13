@@ -72,11 +72,13 @@ copied behaviour reference listing every wired vs. `NOT WIRED` surface.
 - **Mobile layout.** The design is desktop/web-window shaped; there is no mobile breakpoint tree,
   bottom nav, or bottom sheets in the ported app.
 - **Stripe/billing.** Still out of scope.
-- **Sync, accounts.** Live as of Milestone C2: `KyrouStore` is an in-memory record hydrated from
-  IndexedDB (`src/kyrou/persistence/`), and `src/kyrou/sync/` + `workers/kyrou-api` push/pull
-  tasks, projects, routines, routine day-log, and routine runs when signed in — but the sign-in UI
-  is reachable only through the dev harness until Milestone D. The old Supabase/Neon plan and the
-  golden-path diagram below (data-flow, not accounts) are what changed; see it below.
+- **Sync, accounts.** Live as of Milestone C2, with real sign-in UI in C3: `KyrouStore` is an
+  in-memory record hydrated from IndexedDB (`src/kyrou/persistence/`), and `src/kyrou/sync/` +
+  `workers/kyrou-api` push/pull tasks, projects, routines, routine day-log, and routine runs when
+  signed in. Sign in via Settings › Sync & account. When you sign in, any local data you created
+  before signing in is offered as a one-time move into your account (not a copy). The old Supabase/
+  Neon plan and the golden-path diagram below (data-flow, not accounts) are what changed; see it
+  below.
 - **Markdown editing mode.**
 
 ## The golden data-flow rule

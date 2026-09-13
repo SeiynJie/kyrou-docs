@@ -5,10 +5,9 @@ description: The tabbed Settings modal covering preferences, theme, keyboard reb
 
 <Note>
 **2026-09-04 design port:** Settings is now `src/app/SettingsModal.tsx`. Startup, Tray, and
-Update-check remain wired to `src/tauri/*`; Sync & account and About & pricing ship as
-designed but are inert by decision; the sidebar Feedback item links to https://kyrou.featurebase.app/. Theme (Light / Dark / System, Appearance tab) is wired and
-carried over intact — dark is the default, not the only option. Mobile layout and sync/accounts
-are out of scope in the current build.
+Update-check remain wired to `src/tauri/*`; About & pricing ships as designed but is inert by decision; the sidebar Feedback item links to https://kyrou.featurebase.app/. Theme (Light / Dark / System, Appearance tab) is wired and carried over intact — dark is the default, not the only option.
+
+**2026-09-13 (Milestone C3):** Real sign-in via Google OAuth is now wired. Sync & account shows your signed-in session, a Sign out button, and a button to bring local data into your account (the same operation as the Sidebar offer). Mobile layout is out of scope in the current build.
 </Note>
 
 ## What it does
@@ -64,6 +63,16 @@ The General tab includes a **HUD overlay** section (on desktop only) with:
 - **Unfocused opacity** range slider — How dim the card gets when you're not interacting with it (15%–100%, default 35%). Hover always brightens it to 100%.
 
 All settings are persisted to the desktop settings store and take effect immediately. Ctrl+Alt+H cycles the HUD through hidden/focused/off, flipping the Show HUD overlay toggle above when it turns the HUD off; Esc instead drops to rest without hiding. While the HUD is focused, M cycles Micro to Compact to Expanded and saves the result here. See [Desktop (Tauri) → HUD overlay](/features/desktop-tauri#hud-overlay) for the full user guide.
+
+## Sync & account
+
+The Sync & account tab manages your sign-in state and local data:
+
+- **When signed out:** Shows "Your data stays on this device and is not synced" and a **Sign in** button. When you click Sign in, your browser opens Google's login page. After you complete sign-in, Kyrou returns and shows your session.
+- **When signed in:** Shows your email address (or name), a **Sign out** button, and your sync status. If you have items on this device from before you signed in, a **Bring local data into this account** button appears. Click it to move all your local items (tasks, projects, routines, logs, runs) into your account — they will move, not copy, so your device's local storage becomes empty. Clicking **Sign out** switches the planner and routines views straight away to whatever is stored on this device — your account's items are no longer shown — with no reload needed.
+- **After moving local data:** The button disappears once the move completes. If you sign out and back in to the same or a different account, your local device stays empty (your moved items stay in the account you moved them to). If you have local items again after signing in and choose "Keep separate" on the move prompt, they stay on this device and don't sync.
+
+The move is atomic — either it succeeds completely or your data stays untouched. A second browser profile won't show the move prompt if you've already declined it once (you'll need to clear your browser data to see it again).
 
 ## Where to start editing
 
