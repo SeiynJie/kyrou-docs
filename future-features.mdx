@@ -27,14 +27,8 @@ machine) is Milestone E. Still ahead in the same sync-reliability track (item 12
 - **Switch account:** deferred — Google's managed sign-in re-signs silently with no per-call
   account-chooser prompt, so switching accounts needs its own design.
 
-**2026-09-14 (Milestone E) shipped:** the web build is now hosted publicly on Cloudflare Pages
-(`https://kyrou.pages.dev`), with production Worker/Neon origins wired up — the offline shell from
-D3 now matters outside your own machine. Still ahead:
-
-- **Custom domain** (e.g. `app.kyrou.org`) in place of the `kyrou.pages.dev` default — deferred
-  because it touches five origin lists at once (Worker `ALLOWED_ORIGINS`, Neon Auth trusted
-  domains, Google OAuth client origins, `public/_headers`, and the Tauri CSP), not because it's
-  hard on its own.
+**2026-09-14/15 (Milestone E):** production Worker/Neon origins are wired up for the packaged
+desktop app. Kyrou is decided desktop-only (2026-09-15) — no public web hosting is planned.
 
 The current sequence is release-first: make sync reliable, gather real feedback from prospective PMF users and the ICP, then monetize only after the retention loop is credible.
 

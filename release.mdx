@@ -80,27 +80,6 @@ now-missing `app.exe` and must toggle Settings → Startup → "Start Kyrou on c
 once after updating.
 </Warning>
 
-## Deploy Web (Cloudflare Pages)
-
-`.github/workflows/deploy-web.yml` is the web build's own pipeline, separate from the Windows
-release above and from `deploy-worker.yml`: on push to `main` (path-filtered to `src/**`,
-`public/**`, `index.html`, `package*.json`, `vite.config.*`, or itself) and on
-`workflow_dispatch`, it runs `npm ci`, `npm run build`, then
-`npx wrangler pages deploy dist --project-name kyrou --branch main`, publishing to
-`https://kyrou.pages.dev`. Direct upload only — no Pages Git integration, no preview deploys.
-
-`VITE_KYROU_API_URL` and `VITE_NEON_AUTH_URL` come from GitHub repository **variables** (public
-URLs, not secrets) — the build fails loudly if either is unset, since the build would otherwise
-silently ship pointed at nothing. It also greps the built `dist/assets` for the dev-only
-sync-harness marker (must be absent from a production bundle) and asserts `dist/_headers` landed
-before deploying, since that file carries the web CSP header.
-
-<Warning>
-If the guard step fails on "Missing repo variable", set `VITE_KYROU_API_URL` and
-`VITE_NEON_AUTH_URL` under Settings → Secrets and variables → **Variables** (not Secrets) on the
-repo, then re-run the workflow.
-</Warning>
-
 ## Android CI paused
 
 Android CI (the release job and the PR debug build) was removed in v0.3.1, pending the responsive/accessibility work it depends on. Restore it by reverting that commit when that work lands. `docs/android-setup.md` and `docs/android-signing.md` are kept as-is for when it comes back.

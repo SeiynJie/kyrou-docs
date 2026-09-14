@@ -115,15 +115,11 @@ component re-renders
 `kyrou:data:v1` in `localStorage` is the migrated-once legacy record — kept for now, never written
 after the v4 upgrade.
 
-**Hosting, in the same request path:** the web build is a static Cloudflare Pages deploy
-(`https://kyrou.pages.dev`, project `kyrou`, direct upload — no Git integration, no preview
-deploys), so a browser's request to load the app terminates there, not at the Worker. Once loaded,
-`src/kyrou/sync/` talks to the Worker (`workers/kyrou-api`, deployed separately), which reads and
-writes a `production` branch of the existing Neon project. Neon Auth is per branch, not shared:
-production uses its own Neon Auth endpoint (Google sign-in), separate from the dev branch's.
-`public/_headers` (copied into `dist/` at build time) sets the web
-build's CSP response header, kept equal to the Tauri desktop app's CSP by a pinned test. See
-[Release](/release) for the deploy workflow.
+**Hosting:** Kyrou is desktop-only — there is no public web deploy. The Worker
+(`workers/kyrou-api`, deployed separately) is what the packaged desktop app talks to over the
+network; it reads and writes a `production` branch of the existing Neon project. Neon Auth is per
+branch, not shared: production uses its own Neon Auth endpoint (Google sign-in), separate from the
+dev branch's. See [Release](/release) for the deploy workflow.
 
 `KyrouStore`'s shape:
 
