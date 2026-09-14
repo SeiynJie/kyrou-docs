@@ -8,6 +8,12 @@ description: The tabbed Settings modal covering preferences, theme, keyboard reb
 Update-check remain wired to `src/tauri/*`; About & pricing ships as designed but is inert by decision; the sidebar Feedback item links to https://kyrou.featurebase.app/. Theme (Light / Dark / System, Appearance tab) is wired and carried over intact — dark is the default, not the only option.
 
 **2026-09-13 (Milestone C3):** Real sign-in via Google OAuth is now wired. Sync & account shows your signed-in session, a Sign out button, and a button to bring local data into your account (the same operation as the Sidebar offer). Mobile layout is out of scope in the current build.
+
+**2026-09-14 (Milestone D1):** One shared sync-status projection now drives the sidebar footer, the collapsed rail, the sidebar's account menu, and this Sync & account tab. **Ctrl/Cmd+S** (and every "Sync now"/"Retry now" button) commits whatever you're typing and syncs immediately. If your session expires, Kyrou keeps showing your account's tasks with a **"Sign-in lapsed"** notice instead of signing you out — sync just pauses until you sign in again.
+
+**2026-09-14 (Milestone D2):** A **Conflict review** modal lets you resolve a sync conflict field by field instead of the server silently picking a winner — see [Conflict review](#conflict-review) below. A change the server rejects is now surfaced instead of silently dropped: an edit or delete that fails toasts that it was undone, and a new item that fails to sync stays on that device with its own toast.
+
+**2026-09-14 (Milestone D3):** The multi-edit conflict fix landed — two unsynced edits to the same field no longer silently overwrite another device's edit to it. The Conflict review modal is now fully keyboard-operable and no longer crashes when you pick a side.
 </Note>
 
 ## What it does
@@ -23,6 +29,11 @@ On mobile, Settings is reachable from the bottom navigation as a real tab-bar ac
 | `src/app/SettingsModal.tsx` | The modal class component — tab switching and layout for preferences, appearance, import/export, keyboard, dev tools, pricing, updates |
 | `src/tauri/updater.ts` | Tauri auto-update logic — `isDesktop()`, `checkForUpdate()`, `getAppVersion()` |
 | `src/tauri/globalHotkey.ts` | Registers the global "open Kyrou" OS-level hotkey via the Tauri global-shortcut plugin |
+| `src/kyrou/sync/coordinator.ts` | `subscribeSyncView`, `syncNow()` (the Ctrl/Cmd+S and Sync now/Retry now entry point), `installSyncKeys()` |
+| `src/kyrou/sync/view.ts` | Pure sync-status state used by the sidebar footer, rail, account menu and this Settings tab |
+| `src/kyrou/auth/auth.ts` | Sign-in/out and the lapsed-session state shown as "Sign-in lapsed" |
+| `src/kyrou/sync/conflicts.ts` | Pure conflict model consumed by the Conflict review modal |
+| `src/app/ConflictReviewModal.tsx` | The Conflict review modal, opened by the `kyrou:review-conflicts` window event |
 
 ## Key concepts / how it connects
 
@@ -68,11 +79,31 @@ All settings are persisted to the desktop settings store and take effect immedia
 
 The Sync & account tab manages your sign-in state and local data:
 
-- **When signed out:** Shows "Your data stays on this device and is not synced" and a **Sign in** button. When you click Sign in, your browser opens Google's login page. After you complete sign-in, Kyrou returns and shows your session.
-- **When signed in:** Shows your email address (or name), a **Sign out** button, and your sync status. If you have items on this device from before you signed in, a **Bring local data into this account** button appears. Click it to move all your local items (tasks, projects, routines, logs, runs) into your account — they will move, not copy, so your device's local storage becomes empty. Clicking **Sign out** switches the planner and routines views straight away to whatever is stored on this device — your account's items are no longer shown — with no reload needed.
+- **When signed out:** Shows "Sign in to keep tasks, projects and routines the same on every device you use." and a **Sign in with Google** button. When you click it, your browser opens Google's login page. After you complete sign-in, Kyrou returns and shows your session.
+- **When signed in:** Shows your avatar initial, name and email, a coloured status pill (matching the sync state below), **Last successful sync**, **Waiting on this device** (a pending-change count), and a **Sync now** button with a `Ctrl+S` key cap. If any items changed on this device and another, a **Review conflicts** row appears reading "N item(s) changed on this device and another. Both versions are kept until you choose." with a **Review** button (amber count) — see [Conflict review](#conflict-review) below. If you have items on this device from before you signed in, a row labeled "Bring local data into this account" appears with a **Bring them in** button. Click it to move all your local items (tasks, projects, routines, logs, runs) into your account — they will move, not copy, so your device's local storage becomes empty. A **Sign out** button sits under its own "Change account" group; clicking it switches the planner and routines views straight away to whatever is stored on this device — your account's items are no longer shown — with no reload needed, and Kyrou briefly fades in its splash screen during the switch.
+- **When your sign-in has lapsed:** If your session expires (for example, it wasn't used for a long time), Kyrou does **not** sign you out — it keeps showing your account's tasks with a **"Sign-in lapsed"** notice ("Your local changes are safe on this device and sync once you sign in again.") and a **Sign in again** button. Sync pauses until you sign in again; nothing is lost, and once you're back in, sync resumes on its own with no reload.
 - **After moving local data:** The button disappears once the move completes. If you sign out and back in to the same or a different account, your local device stays empty (your moved items stay in the account you moved them to). If you have local items again after signing in and choose "Keep separate" on the move prompt, they stay on this device and don't sync.
 
 The move is atomic — either it succeeds completely or your data stays untouched. A second browser profile won't show the move prompt if you've already declined it once (you'll need to clear your browser data to see it again).
+
+## Account menu (sidebar) and Ctrl/Cmd+S
+
+The sidebar's account button at the bottom (avatar + name, or "Sign in" when signed out) opens the same sign-in/sync controls as a dropdown, and shows a live one-line sync status right under your name — a coloured dot plus text like `synced · 2 min ago`, `saved here · just now`, `N pending`, `syncing`, `offline · saved here`, `sign in to resume`, `N conflict(s)`, or `sync failed · retrying`. Opening the menu (click the account button) shows your name and email at the top, a **Sync now** (or **Retry now** if the last attempt failed) row with a `Ctrl+S` key cap and the last-synced time, a **Review conflicts** row (amber count) whenever there are open conflicts, **Settings** (`Ctrl+.`), and **Sign out** — or, while lapsed, a **Sign in again** row above all of that.
+
+**Ctrl/Cmd+S** works anywhere in the app — including while typing in a field or with Settings open — and never triggers the browser's own Save dialog. It first commits whatever you're actively typing (a task title, a note), then does exactly what the Sync now / Retry now button does. Holding the key down doesn't repeat the action or spam a notification.
+
+## Conflict review
+
+Opened from the **Review conflicts** row in either the sidebar account menu or Settings → Sync & account. It shows up when the same item was changed on this device and on another one before they last synced.
+
+- **The two cards:** each changed field (or group of fields that change together, like a task's date and time) gets a **This device** card and an **Another device** card, side by side, showing what each device's version currently holds.
+- **Choosing per field:** click **Keep this** on whichever card has the version you want, for each field shown. If a task or project was deleted on one device and edited on the other, you instead choose whether to keep or delete it — deleting asks you to confirm once more, since it removes it everywhere.
+- **Keep for all:** two buttons let you resolve every open conflict at once by picking "this device" or "another device" for everything — a confirmation names how many conflicts it affects before it applies.
+- **Deleting on every device:** keeping the side that deleted an item removes it everywhere, after a "Delete on every device?" confirmation.
+- **Later keeps both versions:** closing without finishing (Esc, or the Later/Back button) does nothing — both versions stay exactly as they were, and you can come back to the same conflict later.
+- **Keyboard:** the whole modal works without a mouse — Tab/Shift+Tab cycle its buttons and wrap (even right when the modal opens, before you've clicked anything), arrow keys move between fields (or list rows when several conflicts are open), Enter or Space activates whatever's focused. Esc goes **Back** to the list when you opened the item from there — the same as the Back button — and only closes the modal when the item wasn't opened from a list (one open conflict, or Esc from the list itself). Opening an item — by clicking a row, or with Enter/Space while a row is focused — moves keyboard focus straight onto its first field's **Keep this**/**This device** button, so the arrow keys and Enter keep working right away. In list view, arrow keys skip Done until at least one conflict is resolved (a disabled button can't take focus). Focus returns to wherever you opened it from.
+
+**Rejected changes:** separately from conflicts, if the server ever refuses a change outright, Kyrou toasts you about it instead of losing it silently — an edited or deleted item that couldn't sync is undone back to its last synced state, and a brand-new item that couldn't sync just stays on that device only.
 
 ## Where to start editing
 

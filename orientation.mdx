@@ -5,8 +5,9 @@ description: The mental model you need before touching any Kyrou code — stack,
 
 Kyrou is a **local-first desktop/web daily planner**. Data lives in IndexedDB through `KyrouStore`,
 with the persistence layer in `src/kyrou/persistence/` and sync in `src/kyrou/sync/` + `workers/kyrou-api`.
-An account and sync are optional; the sync UI is available only through the dev harness until a later
-milestone. On 2026-09-04 the entire UI and data layer were replaced by a **mechanical,
+An account and sync are optional; as of Milestone D1 the sync status, Ctrl/Cmd+S and account menu are
+real UI (sidebar footer/rail, account menu, Settings → Sync & account), coordinated by
+`src/kyrou/sync/coordinator.ts` — not just the dev harness. On 2026-09-04 the entire UI and data layer were replaced by a **mechanical,
 one-to-one port** of a hand-built Claude Design app: Dexie, React Router, Tailwind CSS,
 `@dnd-kit`, `chrono-node`, `react-toastify`, and the in-progress Supabase/Neon sync migration were
 all removed. This page describes the app as it exists today.
@@ -18,6 +19,7 @@ all removed. This page describes the app as it exists today.
 | UI framework | React 19 + Vite + TypeScript, class components (`extends Component<Props, any>`) |
 | Styling | CSS custom-property tokens in `src/ds/tokens/*.css`, dark by default with Light/System support, no Tailwind |
 | Persistence | IndexedDB (via `src/kyrou/store.ts` and `src/kyrou/persistence/`) with optional sync when signed in |
+| Offline (web build) | A versioned service worker (`src/kyrou/offline/sw.js`), production-only, never registered in Tauri — Milestone D3 |
 | Desktop settings | Zustand (`src/tauri/settingsStore.ts`) — three booleans, not domain data |
 | UI preferences | `localStorage` (last viewed page/day, theme, PostHog opt-out) |
 | Icons | `lucide` (`window.lucide.createIcons()`), not `lucide-react` |
@@ -62,10 +64,11 @@ before first render (no flash), and Settings → Appearance → Theme is the use
 
 ## Mocked and inert surfaces
 
-Sidebar starts **signed-out** by default. Feedback, Sync & account, and About & pricing render
-exactly as designed but are inert — their handlers are deliberate no-ops
-(`// ponytail: Feedback/Sync/Pricing inert by decision`). `docs/design-behaviour-spec.html` is the
-copied behaviour reference listing every wired vs. `NOT WIRED` surface.
+Sidebar starts **signed-out** by default. Sign-in, Sync & account and the account menu are real as
+of Milestones C3/D1 (Google OAuth, live sync status, Ctrl/Cmd+S). About & pricing still renders
+exactly as designed but is inert by decision — its handlers are deliberate no-ops.
+`docs/design-behaviour-spec.html` is the copied behaviour reference listing every wired vs.
+`NOT WIRED` surface.
 
 ## Out of scope today
 
@@ -96,7 +99,13 @@ src/kyrou/store.ts (KyrouStore) — mutates its in-memory `data` object
 src/kyrou/persistence/ (IndexedDB, `rev`/`localRev`/`fieldRevs`/`deletedAt` per row)
    |  when signed in, the diff also enqueues an op for
    v
-src/kyrou/sync/ + workers/kyrou-api (push/pull; dev harness only until Milestone D)
+src/kyrou/sync/runner.ts + workers/kyrou-api (push/pull)
+   |  status (syncing/offline/lastError/pending) feeds
+   v
+src/kyrou/sync/coordinator.ts — subscribeSyncView() merges runner status, auth state and
+   |  IndexedDB counts into one view for the sidebar footer, rail, account menu and Settings;
+   |  syncNow() is what Ctrl/Cmd+S and every "Sync now"/"Retry now" control calls
+   v
    |  subscribed components re-render (subs[] callbacks + forceUpdate),
    |  or via a 'kyrou:*' CustomEvent on window
    v
@@ -105,6 +114,16 @@ component re-renders
 
 `kyrou:data:v1` in `localStorage` is the migrated-once legacy record — kept for now, never written
 after the v4 upgrade.
+
+**Hosting, in the same request path:** the web build is a static Cloudflare Pages deploy
+(`https://kyrou.pages.dev`, project `kyrou`, direct upload — no Git integration, no preview
+deploys), so a browser's request to load the app terminates there, not at the Worker. Once loaded,
+`src/kyrou/sync/` talks to the Worker (`workers/kyrou-api`, deployed separately), which reads and
+writes a `production` branch of the existing Neon project. Neon Auth is per branch, not shared:
+production uses its own Neon Auth endpoint (Google sign-in), separate from the dev branch's.
+`public/_headers` (copied into `dist/` at build time) sets the web
+build's CSP response header, kept equal to the Tauri desktop app's CSP by a pinned test. See
+[Release](/release) for the deploy workflow.
 
 `KyrouStore`'s shape:
 
@@ -118,7 +137,7 @@ Every save that actually changes the record pushes the previous snapshot onto an
 session-only undo stack (50 deep); saves within 700ms sharing a coalesce key fold into one undo
 step. Undo/redo swap whole snapshots and fire `kyrou:restore`.
 
-**Data model:** `KyrouStore` is one memory record hydrated from IndexedDB (`src/kyrou/persistence/`) before the first render and saved as a diff-based transactional write. There is no repository layer, no `useLiveQuery`, and no async data access — every store call is synchronous. Tasks, projects, routines, the routine day log and runs sync when signed in via `src/kyrou/sync/` + `workers/kyrou-api` (dev harness only until Milestone D). Components import `src/kyrou/store.ts`'s named exports directly. The engine modules are a one-directional dependency chain, not a cycle: `store.ts` imports `recur.ts` (which itself imports nothing); `routines.ts` imports `store.ts`, `recur.ts`, and `undo.ts`; `projects.ts` imports `store.ts` — nothing imports back into `routines.ts` or `projects.ts`.
+**Data model:** `KyrouStore` is one memory record hydrated from IndexedDB (`src/kyrou/persistence/`) before the first render and saved as a diff-based transactional write. There is no repository layer, no `useLiveQuery`, and no async data access — every store call is synchronous. Tasks, projects, routines, the routine day log and runs sync when signed in via `src/kyrou/sync/` + `workers/kyrou-api`, with real sync-status UI and a Ctrl/Cmd+S "sync now" gesture as of Milestone D1 (`src/kyrou/sync/coordinator.ts`) — no longer dev-harness only. Components import `src/kyrou/store.ts`'s named exports directly. The engine modules are a one-directional dependency chain, not a cycle: `store.ts` imports `recur.ts` (which itself imports nothing); `routines.ts` imports `store.ts`, `recur.ts`, and `undo.ts`; `projects.ts` imports `store.ts` — nothing imports back into `routines.ts` or `projects.ts`.
 
 Zustand (`src/tauri/settingsStore.ts`) is unrelated to `KyrouStore` — it holds only three desktop
 preferences (`startOnStartup`, `minimizeToTray`, `updateCheckOnStartup`), never domain data.

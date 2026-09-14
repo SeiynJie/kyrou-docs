@@ -9,11 +9,38 @@ Kyrou's active roadmap lives in **`docs/roadmap/`**. Treat that folder as the so
 Design app (see [Orientation](/orientation)); data lives in IndexedDB through `KyrouStore`.
 Tasks, projects, routines, the routine day log, and routine runs sync when you are signed in.
 
+**2026-09-14 (Milestones D1 and D2) shipped:** the shared sync-status projection, Ctrl/Cmd+S, the
+sidebar account menu, lapsed sign-in (an expired session keeps your account's tasks visible instead
+of signing you out), and a **Conflict review** modal reachable from "Review conflicts" rows — see
+[Settings & Updates → Conflict review](/features/settings-updates#conflict-review). A change the
+server rejects is now surfaced (undone-and-toasted, or kept local-only and toasted) instead of
+silently dropped.
+
+**2026-09-14 (Milestone D3) shipped:** the multi-edit conflict fix — two unsynced edits to the same
+field on this device no longer overwrite another device's edit to it before a conflict ever shows up
+to resolve, fixed on the client rather than the Worker. The **Conflict review** modal is now fully
+keyboard-operable (Tab, arrow keys, Enter/Space, Esc) and no longer crashes when you pick a side. An
+**offline shell** — a versioned service worker that caches the app itself — shipped too, verified
+against a local production build; hosting the web build publicly (so this matters outside your own
+machine) is Milestone E. Still ahead in the same sync-reliability track (item 12):
+
+- **Switch account:** deferred — Google's managed sign-in re-signs silently with no per-call
+  account-chooser prompt, so switching accounts needs its own design.
+
+**2026-09-14 (Milestone E) shipped:** the web build is now hosted publicly on Cloudflare Pages
+(`https://kyrou.pages.dev`), with production Worker/Neon origins wired up — the offline shell from
+D3 now matters outside your own machine. Still ahead:
+
+- **Custom domain** (e.g. `app.kyrou.org`) in place of the `kyrou.pages.dev` default — deferred
+  because it touches five origin lists at once (Worker `ALLOWED_ORIGINS`, Neon Auth trusted
+  domains, Google OAuth client origins, `public/_headers`, and the Tauri CSP), not because it's
+  hard on its own.
+
 The current sequence is release-first: make sync reliable, gather real feedback from prospective PMF users and the ICP, then monetize only after the retention loop is credible.
 
 | # | File | Theme | Why this order |
 |---|---|---|---|
-| 12 | `docs/roadmap/12-sync-stuff-to-work.md` | Sync reliability | Finish create/edit/delete, stale push handling, conflict recovery, and restoration before inviting more users |
+| 12 | `docs/roadmap/archive/12-sync-stuff-to-work.md` | Sync reliability | Finish create/edit/delete, stale push handling, conflict recovery, and restoration before inviting more users |
 | 13 | `docs/roadmap/13-feature-requests-roadmap.md` | Featurebase + feedback loop | Add a public Feature Requests & Roadmap page with Featurebase, then connect feedback to roadmap decisions |
 | 14a | `docs/roadmap/14a-recurring-tasks.md` | Recurring tasks | Shipped with sync — see [Recurring Tasks](/features/recurring-tasks); the rule rides on the task |
 | 14b | `docs/roadmap/14b-planning-rituals.md` | Planning rituals | Deferred; split out from 14a |
