@@ -121,6 +121,10 @@ A floor that no shipped build currently satisfies is inert by design — the cli
 - Sanity-check the GitHub Release page: installer asset + `latest.json` both present.
 - Optionally install the new version locally and use **Settings -> Updates -> Check for updates** ([Settings & Updates](/features/settings-updates)) on the *previous* version to confirm the update prompt actually appears and installs cleanly.
 
+## Release history
+
+- **0.4.0 (2026-09-15, Milestone E):** production Worker/Neon origins wired up for the packaged desktop app; the full acceptance-matrix hand gate passed (7 rows run by hand, all PASS). Fixes: the HUD overlay now follows a sign-in/out done in the main window instead of keeping its boot-time scope; the Worker's 429 now exposes `retry-after` cross-origin so the client backs off on the server's hint instead of guessing. Known gap: a resnapshot after a production database restore can leave rewound rows as local-only orphans — see [Future Features](/future-features) and the database-restore runbook in `docs/DECISIONS.md` (D78).
+
 ## Why "Check for updates" can error
 
 The in-app updater fetches `https://github.com/SeiynJie/kyrou-releases/releases/latest/download/latest.json` (see step 6 above), and that URL must be **publicly reachable** — the Tauri updater plugin's fetch is unauthenticated. It 404s (and the user sees an error toast) until:

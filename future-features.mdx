@@ -28,7 +28,11 @@ machine) is Milestone E. Still ahead in the same sync-reliability track (item 12
   account-chooser prompt, so switching accounts needs its own design.
 
 **2026-09-14/15 (Milestone E):** production Worker/Neon origins are wired up for the packaged
-desktop app. Kyrou is decided desktop-only (2026-09-15) — no public web hosting is planned.
+desktop app. Kyrou is decided desktop-only (2026-09-15) — no public web hosting is planned. The
+hand-run acceptance matrix passed; one known gap remains open rather than fixed here: after a
+production database restore, a device's resnapshot can leave rows the restore rewound as
+permanent local-only orphans (never re-pushed, never seen by other devices) — see
+`docs/roadmap/19-known-bugs.md`, tracked in a GitHub issue.
 
 The current sequence is release-first: make sync reliable, gather real feedback from prospective PMF users and the ICP, then monetize only after the retention loop is credible.
 
