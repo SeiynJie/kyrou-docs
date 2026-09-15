@@ -138,6 +138,13 @@ step. Undo/redo swap whole snapshots and fire `kyrou:restore`.
 Zustand (`src/tauri/settingsStore.ts`) is unrelated to `KyrouStore` — it holds only three desktop
 preferences (`startOnStartup`, `minimizeToTray`, `updateCheckOnStartup`), never domain data.
 
+**Wiping local data is a device-only operation, never a cloud one.** Settings → Clear all local
+data goes through `clearLocalData()` (`src/kyrou/clearLocalData.ts`): stop sync, sign out, freeze
+`KyrouStore` (`quiesce()`), then erase every IndexedDB store in one transaction
+(`clearAllData()`) — only after that transaction succeeds does the caller reload. A `wipeGen`
+counter bumped inside that same transaction lets any write already in flight get rejected instead
+of silently re-creating the rows that were just cleared.
+
 ## Dates and times are strings, never `Date`
 
 Persisted fields use plain strings, unchanged by the port:
