@@ -38,7 +38,8 @@
           "features/recurring-tasks",
           "features/quick-add",
           "features/settings-updates",
-          "features/desktop-tauri"
+          "features/desktop-tauri",
+          "features/billing"
         ]
       },
       {

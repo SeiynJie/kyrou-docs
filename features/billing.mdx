@@ -1,0 +1,62 @@
+---
+title: Billing
+description: Download-first paywall backed by Paddle — webhook fulfillment, entitlement checks, and the customer portal.
+---
+
+<Note>
+**2026-09-15:** Fulfillment plumbing (webhook, entitlement, portal, checkout ticket, duplicate-subscription 
+cancellation) is live against the Paddle sandbox on dev. The in-app paywall screen exists but is not wired 
+into boot yet — it waits on onboarding. Landing page checkout verification and return flow are wired. 
+Production secrets, database migration 0010, and notification destination setup are pending. See D81 in 
+`docs/DECISIONS.md`.
+</Note>
+
+## What it does
+
+Kyrou has no freemium tier. The flow is: download the app → onboarding → paywall → pay on the
+website's own `/checkout` page (a Paddle.js overlay) → the app rechecks entitlement and unlocks.
+
+Payment never happens inside the desktop app itself — only a link out to the website checkout and
+a link out to Paddle's hosted customer portal for managing an existing subscription.
+
+## Files tied to it
+
+- `workers/kyrou-api/src/routes/paddle-webhook.ts` — `POST /v1/paddle/webhook`
+- `workers/kyrou-api/src/routes/billing.ts` — `GET /v1/billing/entitlement`, `POST /v1/billing/portal`
+- `workers/kyrou-api/src/billing.ts` — `grantsAccess(status)`
+- `database/migrations/0010_billing.sql` — `kyrou.billing_customers`, `kyrou.billing_subscriptions`
+- `src/kyrou/billing.ts` — `checkoutUrl()`, `needsPaywall()`
+- `src/kyrou/sync/api.ts` — `getEntitlement`, `getBillingPortalUrl`
+- `src/app/Paywall.tsx` — the paywall screen (not wired into boot)
+- `src/app/SettingsModal.tsx` — "Manage billing" row under Sync & account
+
+## How it works
+
+1. **Webhook.** Paddle posts subscription/customer events to `POST /v1/paddle/webhook`. The
+   signature is verified with a hand-rolled HMAC-SHA256 check against every `h1` value in the
+   `Paddle-Signature` header (covers secret rotation) — no `@paddle/paddle-node-sdk`, since a plain
+   `crypto.subtle` check is smaller and runs natively on Workers. A bad signature always returns
+   401, never a 2xx. Events upsert `billing_customers`/`billing_subscriptions`, guarded so a
+   stale or replayed event (`occurred_at` older than what's stored) can never overwrite newer state.
+
+2. **Entitlement.** `GET /v1/billing/entitlement` joins subscriptions to customers on the **signed-in
+   user's JWT email claim**, not the `user_id` the webhook wrote from checkout's `customData` —
+   that field is set client-side during checkout and isn't trustworthy for authorization on its
+   own. `grantsAccess(status)` treats `active`, `trialing`, and `past_due` as entitled; `paused` and
+   `canceled` are not. A subscription with a scheduled cancellation still grants access until it
+   actually lapses.
+
+3. **Portal.** `POST /v1/billing/portal` resolves the Paddle customer the same way (JWT email) and
+   returns a hosted customer-portal URL, which Settings opens externally.
+
+4. **Client gate.** `needsPaywall(apiUrl, token)` calls the entitlement endpoint and **fails open**
+   on any error (including offline) — a network hiccup can never lock out a user who has already
+   paid.
+
+## Known gaps
+
+- The paywall screen is not shown anywhere yet; nothing in the app calls `needsPaywall()`.
+- Only the dev database and dev Paddle sandbox are wired up. Production secrets and the
+  `0010_billing.sql` migration on the production branch are still pending.
+- A user who pays with a different email than the one they sign into Kyrou with is never entitled,
+  because entitlement is bound to the JWT email. There is no account-linking flow yet.
