@@ -4,10 +4,12 @@ description: Download-first paywall backed by Paddle — webhook fulfillment, en
 ---
 
 <Note>
-**2026-09-16:** The checkout page is live at `https://kyrou.org/#/checkout`, still on the Paddle
-sandbox. A real sandbox purchase from the desktop dev app unlocked the paywall end to end. The
-in-app paywall is not wired into boot yet; it waits on onboarding. Paddle live mode comes after the
-next release. See D81 and D82 in `docs/DECISIONS.md`.
+**2026-09-16 (D82 Part 2):** The paywall gate is live. The app checks entitlement at boot, on focus,
+on auth change, and on paywall-open events. Signed-out users land in read-only mode; locked users see
+a full-screen Paywall. Cached entitlement grants offline read-only with no time limit. The checkout
+page at `https://kyrou.org/#/checkout` is on the Paddle sandbox. A real sandbox purchase from the dev
+app unlocked the paywall end to end, and the app recorded a trialing subscription. Server-side, push and
+conflict resolve return 402 for non-entitled accounts. See D81 and D82 Part 2 in `docs/DECISIONS.md`.
 </Note>
 
 ## Where checkout runs
@@ -58,14 +60,22 @@ a link out to Paddle's hosted customer portal for managing an existing subscript
 3. **Portal.** `POST /v1/billing/portal` resolves the Paddle customer the same way (JWT email) and
    returns a hosted customer-portal URL, which Settings opens externally.
 
-4. **Client gate.** `needsPaywall(apiUrl, token)` calls the entitlement endpoint and **fails open**
-   on any error (including offline) — a network hiccup can never lock out a user who has already
-   paid.
+4. **Client gate (D82 Part 2).** The app checks entitlement at boot, on focus, on auth change, and on paywall-open events via `PaywallGate.tsx` (mounted in `src/main.tsx`). `checkAccess(apiUrl, token, sub) → ok | past_due | locked` caches the server's last successful answer per user in `localStorage['kyrou-entitlement:<sub>']`; errors, 401/403/5xx, and 10s timeouts never write the cache and fall back to it. No cache means locked.
+   - **Locked** → full-screen Paywall showing counts, $9/mo or $90/yr pricing, 7-day free trial (card required), and support contact.
+   - **Past_due** → a BillingBanner saying "Payment failed — update payment" (links to the portal).
+   - **Signed out** → read-only UI plus a paywall offering "Sign in with Google" or "Continue read-only" (no free tier). "Continue read-only" dismisses until `Settings → Subscribe` or auth changes.
+   - **Read-only mode** (`KyrouStore.readOnly`): `save()` blocks with "Read-only — subscribe to edit" and rolls back unsaved edits to the last committed snapshot. Blocks `importBackup()`, undo/redo, and conflict resolve; allows export. The HUD window sets its own read-only from the cache.
+   - **Offline access:** A cached entitled answer grants read-only (not full access) with no time limit, so paying users can still review tasks when offline. Tampering with localStorage is an accepted client-side risk because the Worker enforces it.
+   - `needsPaywall()` **fails open** on any error (including offline) — a network hiccup can never lock out a user who has already paid.
 
 ## Known gaps
 
-- The paywall screen is not shown anywhere yet; nothing in the app calls `needsPaywall()`.
 - Only the dev database and dev Paddle sandbox are wired up. Production secrets and the
-  `0010_billing.sql` migration on the production branch are still pending.
+  `0010_billing.sql` migration on the production branch (ep-icy-dew) are still pending — the migration
+  must be applied before the Worker deploys, otherwise every push returns 500.
+- Onboarding flag hookup (let onboarded users skip the paywall on subsequent launches) is deferred.
 - A user who pays with a different email than the one they sign into Kyrou with is never entitled,
   because entitlement is bound to the JWT email. There is no account-linking flow yet.
+- Server-side gate: `POST /v1/sync/push` and conflict resolve return `402 {error:'subscription_required'}`
+  for non-entitled accounts; pull stays open. The client parks sync on 402, keeps ops queued, still pulls,
+  and opens the paywall once.

@@ -34,6 +34,14 @@ production database restore, a device's resnapshot can leave rows the restore re
 permanent local-only orphans (never re-pushed, never seen by other devices) — see
 `docs/roadmap/19-known-bugs.md`, tracked in a GitHub issue.
 
+**2026-09-16 (D82 Part 2):** the paywall gate shipped. `PaywallGate.tsx` checks at boot, on focus,
+on auth change, and on paywall-open events. Locked users see a full-screen Paywall; signed-out users
+land in read-only mode offering "Sign in" or "Continue read-only"; past_due users see a BillingBanner.
+`checkAccess()` caches entitlement in localStorage so cached paid users get offline read-only with no
+time limit. Server-side, `POST /v1/sync/push` and conflict resolve return 402 for non-entitled accounts;
+the client parks sync and opens the paywall once. Onboarding flag hookup (skip paywall for onboarded
+users on return) is deferred to D82 Part 3.
+
 The current sequence is release-first: make sync reliable, gather real feedback from prospective PMF users and the ICP, then monetize only after the retention loop is credible.
 
 | # | File | Theme | Why this order |
@@ -44,7 +52,7 @@ The current sequence is release-first: make sync reliable, gather real feedback 
 | 14b | `docs/roadmap/14b-planning-rituals.md` | Planning rituals | Deferred; split out from 14a |
 | 15 | `docs/roadmap/15-day-evening-planner.md` | Day & Evening Planner | Add the dedicated planning stage for onboarding, day-start review, and evening wrap-up |
 | 16 | `docs/roadmap/16-guided-routines.md` | Guided routines | Shipped locally: library, persisted sessions, and desktop stepper execution |
-| 17 | `docs/roadmap/17-payment-system.md` | Kyrou Pro billing | In progress (D81): Paddle webhook fulfillment + entitlement/portal live on dev sandbox; paywall screen built but not wired into boot; production secrets/migration and onboarding still pending — see [Billing](/features/billing) |
+| 17 | `docs/roadmap/17-payment-system.md` | Kyrou Pro billing | Shipped (D81–D82 Part 2): Paddle webhook fulfillment, checkout ticket, entitlement/portal, paywall gate with read-only mode, server 402 gate, offline entitlement cache all live on dev sandbox. Production secrets/migration and onboarding flag hookup still pending — see [Billing](/features/billing) |
 | 18 | `docs/roadmap/18-referral-sharing.md` | Sharing/referrals | Add opt-in productive-progress sharing and referrals |
 | 19 | `docs/roadmap/19-known-bugs.md` | Known bugs | Keep release blockers visible before the release candidate |
 | 20 | `docs/roadmap/20-release-app.md` | Release app | Release the app and measure real-user signals |
