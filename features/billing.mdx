@@ -4,12 +4,21 @@ description: Download-first paywall backed by Paddle — webhook fulfillment, en
 ---
 
 <Note>
-**2026-09-15:** Fulfillment plumbing (webhook, entitlement, portal, checkout ticket, duplicate-subscription 
-cancellation) is live against the Paddle sandbox on dev. The in-app paywall screen exists but is not wired 
-into boot yet — it waits on onboarding. Landing page checkout verification and return flow are wired. 
-Production secrets, database migration 0010, and notification destination setup are pending. See D81 in 
-`docs/DECISIONS.md`.
+**2026-09-16:** The checkout page is live at `https://kyrou.org/#/checkout`, still on the Paddle
+sandbox. A real sandbox purchase from the desktop dev app unlocked the paywall end to end. The
+in-app paywall is not wired into boot yet; it waits on onboarding. Paddle live mode comes after the
+next release. See D81 and D82 in `docs/DECISIONS.md`.
 </Note>
+
+## Where checkout runs
+
+- **Website:** `https://kyrou.org`, on the Cloudflare Pages project `kyrou-landing`. `www.kyrou.org`
+  redirects there.
+- **Environments:** Pages Production talks to the production Worker, and PR preview deployments
+  talk to the dev Worker. A checkout ticket only works on the Worker that created it.
+- **Desktop app:** opens `https://kyrou.org` by default. A dev build pointed at the dev Worker must
+  set `VITE_CHECKOUT_URL` to a preview deployment.
+- **Support:** `support@kyrou.org`.
 
 ## What it does
 
