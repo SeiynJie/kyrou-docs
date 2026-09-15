@@ -92,13 +92,32 @@ The Sync & account tab manages your sign-in state and local data:
 The Backup & data tab covers export/import and clearing local data:
 
 - **Export data** / **Import data** — save all tasks and projects to a JSON backup file, or restore from one. Unaffected by anything below.
-- **Clear all local data** (Danger zone) — signs you out and permanently erases this device's local tasks, projects, routines, and any unsynced changes, including the sync outbox. **Your account's cloud data, your preferences, and any exported backup files are never touched** — clearing only ever affects what's stored on this device. It's a two-click button: the first click asks you to click again to confirm, and it shows "Clearing…" (disabled) while it runs. If it fails partway (for example, IndexedDB is busy), nothing is deleted and Kyrou shows a toast so you can retry — it never reloads into a half-cleared state. On success the app reloads signed out with an empty planner; if you had the always-on-top HUD overlay open, it clears and reloads too. Because signing out is part of clearing, an offline or otherwise failed sign-out during Clear still leaves you signed out after the reload — it doesn't quietly sign you back in.
+- **Clear all local data** (Danger zone) — signs you out and permanently erases this device's local tasks, projects, routines, and any unsynced changes, including the sync outbox. **Your account's cloud data, your preferences, and any exported backup files are never touched** — clearing only ever affects what's stored on this device. Clearing uses the same high-friction confirmation as Delete account: a 5-second countdown hold plus typing `DELETE` exactly to unlock the button. If the clear fails partway (for example, IndexedDB is busy), nothing is deleted and Kyrou shows a toast so you can retry — it never reloads into a half-cleared state. On success the app reloads signed out with an empty planner; if you had the always-on-top HUD overlay open, it clears and reloads too. Because signing out is part of clearing, an offline or otherwise failed sign-out during Clear still leaves you signed out after the reload — it doesn't quietly sign you back in.
 
 ## Account menu (sidebar) and Ctrl/Cmd+S
 
 The sidebar's account button at the bottom (avatar + name, or "Sign in" when signed out) opens the same sign-in/sync controls as a dropdown, and shows a live one-line sync status right under your name — a coloured dot plus text like `synced · 2 min ago`, `saved here · just now`, `N pending`, `syncing`, `offline · saved here`, `sign in to resume`, `N conflict(s)`, or `sync failed · retrying`. Opening the menu (click the account button) shows your name and email at the top, a **Sync now** (or **Retry now** if the last attempt failed) row with a `Ctrl+S` key cap and the last-synced time, a **Review conflicts** row (amber count) whenever there are open conflicts, **Settings** (`Ctrl+.`), and **Sign out** — or, while lapsed, a **Sign in again** row above all of that.
 
 **Ctrl/Cmd+S** works anywhere in the app — including while typing in a field or with Settings open — and never triggers the browser's own Save dialog. It first commits whatever you're actively typing (a task title, a note), then does exactly what the Sync now / Retry now button does. Holding the key down doesn't repeat the action or spam a notification.
+
+## Delete account
+
+The Sync & account tab also includes a **Delete account** button (Danger zone), shown only when you're signed in. It permanently erases:
+
+- Your account's entire cloud data — all tasks, projects, routines, and your sync history.
+- Your Kyrou login. Signing in again later with the same Google account starts a brand-new, empty account.
+- This device's local copy of your data.
+
+After deletion, the device is left signed out with an empty planner, and your data is gone everywhere.
+
+**Confirming:** the confirmation dialog explains what will be erased. The **Delete account** button stays locked with a 5-second countdown, and it only unlocks once you've typed `DELETE` exactly in the box. It works fully from the keyboard: the box has focus when the dialog opens, Tab moves between the box, Cancel and Delete account, Enter confirms once unlocked, and Esc cancels. Deletion is permanent with no undo, so export your data from Backup & data first if you want a copy.
+
+**What happens when you confirm:**
+1. Kyrou stops syncing and asks the server to delete your account.
+2. The server deletes all your cloud data, then your login.
+3. Only after the server confirms both does Kyrou sign you out and clear this device's data.
+
+If something fails along the way (for example, you're offline), Kyrou shows an error message and leaves the data on this device untouched. Just try again: retrying is safe, and it finishes whatever didn't complete the first time.
 
 ## Conflict review
 
